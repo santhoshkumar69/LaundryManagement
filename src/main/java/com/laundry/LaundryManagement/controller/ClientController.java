@@ -37,7 +37,8 @@ public class ClientController {
 		CommonUtills.addDefaultCreateInfos(customerInfo, customerInfo.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
 		
 		CustomerInfo acustomerInfo=null;
-		if(customerInfo.getQatarId()!= null || !customerInfo.getMobileNo().isEmpty())
+		boolean hasMobileNo = customerInfo.getMobileNo() != null && !customerInfo.getMobileNo().isEmpty();
+		if(customerInfo.getQatarId()!= null || hasMobileNo)
 		{
 			if(customerInfo.getQatarId()!=null)
 		{
@@ -45,7 +46,7 @@ public class ClientController {
 			acustomerInfo=customerInfoService.findByQatarId(id);	
 		}
 		
-		if(!customerInfo.getMobileNo().isEmpty())
+		if(acustomerInfo == null && hasMobileNo)
 		{
 			String mobileNo = customerInfo.getMobileNo();
 			acustomerInfo=customerInfoService.findByMobileNo(mobileNo);

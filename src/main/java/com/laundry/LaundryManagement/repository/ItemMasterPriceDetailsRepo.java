@@ -5,6 +5,7 @@ import java.util.List;
 import com.laundry.LaundryManagement.model.ItemMasterPriceDetails;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,7 +18,7 @@ public interface ItemMasterPriceDetailsRepo extends JpaRepository<ItemMasterPric
 	List<ItemMasterPriceDetails> findAll();
 	
 	@Query("From ItemMasterPriceDetails itemMasterPriceDetails where itemMasterPriceDetails.itemMasterId = :id ")
-	List<ItemMasterPriceDetails> findAllByItemMasterId(int id);
+	List<ItemMasterPriceDetails> findAllByItemMasterId(@Param("id") int id);
 	
 	@Query("From ItemMasterPriceDetails itemMasterPriceDetails where itemMasterPriceDetails.ID = :ID ")
 	ItemMasterPriceDetails findByID(Integer ID);

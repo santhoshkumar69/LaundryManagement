@@ -19,6 +19,51 @@ public class ConfirmBilling {
 	private double paidAmount;
 	private String payMode;
 	private String comments;
+	private String deliveryDate; // dd/MM/yyyy HH:mm
+	private String deliveryAddress;
+	private String pickupType;
+	private String cardType;
+	private double extraChargesAmt;
+
+	public String getDeliveryDate() {
+		return deliveryDate;
+	}
+
+	public void setDeliveryDate(String deliveryDate) {
+		this.deliveryDate = deliveryDate;
+	}
+
+	public String getDeliveryAddress() {
+		return deliveryAddress;
+	}
+
+	public void setDeliveryAddress(String deliveryAddress) {
+		this.deliveryAddress = deliveryAddress;
+	}
+
+	public String getPickupType() {
+		return pickupType;
+	}
+
+	public void setPickupType(String pickupType) {
+		this.pickupType = pickupType;
+	}
+
+	public String getCardType() {
+		return cardType;
+	}
+
+	public void setCardType(String cardType) {
+		this.cardType = cardType;
+	}
+
+	public double getExtraChargesAmt() {
+		return extraChargesAmt;
+	}
+
+	public void setExtraChargesAmt(double extraChargesAmt) {
+		this.extraChargesAmt = extraChargesAmt;
+	}
 
 	/**
 	 * @return the estID

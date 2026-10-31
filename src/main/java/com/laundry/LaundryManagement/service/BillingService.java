@@ -3,10 +3,14 @@
  */
 package com.laundry.LaundryManagement.service;
 
+import java.util.List;
+
 import com.laundry.LaundryManagement.dto.BilledDetails;
 import com.laundry.LaundryManagement.dto.BillingInfos;
 import com.laundry.LaundryManagement.dto.ConfirmBilling;
+import com.laundry.LaundryManagement.dto.OrderStatusDto;
 import com.laundry.LaundryManagement.dto.ReceiptDetailDto;
+import com.laundry.LaundryManagement.dto.UpdateOrderStatus;
 import com.laundry.LaundryManagement.model.CustomerInfo;
 import com.laundry.LaundryManagement.model.GlobalInfo;
 
@@ -26,5 +30,9 @@ public interface BillingService {
 	CustomerInfo fetchCustomerDetails(Integer cusID, String mobileNo);
 
 	void removeBillItems(int itemID);
+
+	List<OrderStatusDto> fetchOrders(String fromDate, String toDate, String receiptNo, String customer, String status);
+
+	OrderStatusDto updateOrderStatus(UpdateOrderStatus request, GlobalInfo globalInfo);
 
 }

@@ -58,6 +58,88 @@ public class InvoiceDetails implements Serializable {
 	
 	@Column(name = "TENANT_ID")
 	private int tenantId;
+
+	@Column(name = "EST_ID")
+	private Integer estID;
+	@Column(name = "RECEIPT_NO")
+	private String receiptNo;
+	@Column(name = "ORDER_STATUS")
+	private String orderStatus;
+	@Column(name = "DELIVERY_DATE")
+	private Date deliveryDate;
+	@Column(name = "COLLECTED_DATE")
+	private Date collectedDate;
+	@Column(name = "DELIVERY_ADDRESS", length = 500)
+	private String deliveryAddress;
+	@Column(name = "PICKUP_TYPE")
+	private String pickupType;
+	@Column(name = "PAYMENT_MODE")
+	private String paymentMode;
+	@Column(name = "CARD_TYPE")
+	private String cardType;
+	@Column(name = "EXTRA_CHARGES_AMT")
+	private Double extraChargesAmt;
+
+	public Integer getEstID() {
+		return estID;
+	}
+	public void setEstID(Integer estID) {
+		this.estID = estID;
+	}
+	public String getReceiptNo() {
+		return receiptNo;
+	}
+	public void setReceiptNo(String receiptNo) {
+		this.receiptNo = receiptNo;
+	}
+	public String getOrderStatus() {
+		return orderStatus;
+	}
+	public void setOrderStatus(String orderStatus) {
+		this.orderStatus = orderStatus;
+	}
+	public Date getDeliveryDate() {
+		return deliveryDate;
+	}
+	public void setDeliveryDate(Date deliveryDate) {
+		this.deliveryDate = deliveryDate;
+	}
+	public Date getCollectedDate() {
+		return collectedDate;
+	}
+	public void setCollectedDate(Date collectedDate) {
+		this.collectedDate = collectedDate;
+	}
+	public String getDeliveryAddress() {
+		return deliveryAddress;
+	}
+	public void setDeliveryAddress(String deliveryAddress) {
+		this.deliveryAddress = deliveryAddress;
+	}
+	public String getPickupType() {
+		return pickupType;
+	}
+	public void setPickupType(String pickupType) {
+		this.pickupType = pickupType;
+	}
+	public String getPaymentMode() {
+		return paymentMode;
+	}
+	public void setPaymentMode(String paymentMode) {
+		this.paymentMode = paymentMode;
+	}
+	public String getCardType() {
+		return cardType;
+	}
+	public void setCardType(String cardType) {
+		this.cardType = cardType;
+	}
+	public Double getExtraChargesAmt() {
+		return extraChargesAmt;
+	}
+	public void setExtraChargesAmt(Double extraChargesAmt) {
+		this.extraChargesAmt = extraChargesAmt;
+	}
 	
 	/**
 	 * @return the invID

@@ -3,23 +3,34 @@
  */
 package com.laundry.LaundryManagement.service;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.laundry.LaundryManagement.common.CommonUtills;
 import com.laundry.LaundryManagement.dto.BilledDetails;
 import com.laundry.LaundryManagement.dto.BillingComponets;
 import com.laundry.LaundryManagement.dto.BillingInfos;
 import com.laundry.LaundryManagement.dto.ConfirmBilling;
+import com.laundry.LaundryManagement.dto.OrderStatusDto;
 import com.laundry.LaundryManagement.dto.ReceiptDetailDto;
+import com.laundry.LaundryManagement.dto.UpdateOrderStatus;
 import com.laundry.LaundryManagement.model.BilledComponents;
 import com.laundry.LaundryManagement.model.CustomerInfo;
 import com.laundry.LaundryManagement.model.EstimationDetails;
 import com.laundry.LaundryManagement.model.GlobalInfo;
 import com.laundry.LaundryManagement.model.InvoiceDetails;
-import com.laundry.LaundryManagement.model.ItemMaster;
 import com.laundry.LaundryManagement.model.ItemMasterPriceDetails;
 import com.laundry.LaundryManagement.model.PaymentDetails;
 import com.laundry.LaundryManagement.repository.BilledComponetRepository;
@@ -39,22 +50,32 @@ import com.laundry.LaundryManagement.repository.PaymentRepository;
 @Service
 public class BillingServiceImpl implements BillingService {
 
-	//@Autowired
+	public static final String ORDER_PLACED = "ORDER_PLACED";
+	public static final String UNDER_PROCESSING = "UNDER_PROCESSING";
+	public static final String READY_TO_DELIVER = "READY_TO_DELIVER";
+	public static final String COLLECTED = "COLLECTED";
+	public static final String FILTER_OVERDUE = "OVERDUE";
+	public static final String FILTER_FUTURE_DELIVERY = "FUTURE_DELIVERY";
+	private static final List<String> ORDER_STATUSES = Arrays.asList(ORDER_PLACED, UNDER_PROCESSING,
+			READY_TO_DELIVER, COLLECTED);
+
+	@Autowired
 	EstimationRepository estimationRepo;
-	//@Autowired
+	@Autowired
 	BilledComponetRepository billingRepo;
 	@Autowired
 	InvoiceDetailRepository invoiceRepo;
 	@Autowired
 	PaymentRepository paymentRepo;
-	//@Autowired
+	@Autowired
 	ItemMasterRepo itemRepo;
-	//@Autowired
+	@Autowired
 	ItemMasterPriceDetailsRepo itemMasterPriceDetailsRepo;
 	@Autowired
 	CustomerInfoRepo customRepo;
 
 	@Override
+	@Transactional
 	public BilledDetails createEstimationDetails(BillingInfos billingReq, GlobalInfo globalInfo) {
 		BilledDetails billedDetails = new BilledDetails();
 		try {
@@ -65,11 +86,6 @@ public class BillingServiceImpl implements BillingService {
 			est.setBillStatus(0);
 			CommonUtills.addDefaultCreateInfos(est, est.getClass(), globalInfo);
 			estimationRepo.save(est);
-			System.out.println("Estimation ID:" + est.getEstID());
-			int[] test = {1,0};
-			for(int i=0;i < test.length; i++) {
-
-			}
 			for (BillingComponets eachCompo : billingReq.getComponets()) {
 				double totalAmt = 0;
 				BilledComponents components = new BilledComponents();
@@ -78,15 +94,13 @@ public class BillingServiceImpl implements BillingService {
 				components.setEstimateID(est.getEstID());
 				components.setQty(eachCompo.getQty() + "");
 
-				ItemMaster itemInfo = itemRepo.findById(eachCompo.getItemID()).get();
-				ItemMasterPriceDetails itemMasterPriceDetails = new ItemMasterPriceDetails();
-				if (itemInfo == null)
-					return null;
-
-				if (eachCompo.isIronReq())
-					totalAmt += (eachCompo.getQty() * itemMasterPriceDetails.getOrdinaryPrice());
-				if (eachCompo.isLaundryReq())
-					totalAmt += (eachCompo.getQty() * itemMasterPriceDetails.getUrgentPrice());
+				List<ItemMasterPriceDetails> priceRows = itemMasterPriceDetailsRepo
+						.findAllByItemMasterId(eachCompo.getItemID());
+				ItemMasterPriceDetails price = (priceRows != null && !priceRows.isEmpty())
+						? priceRows.get(0)
+						: new ItemMasterPriceDetails();
+				int unitPrice = eachCompo.isUrgent() ? price.getUrgentPrice() : price.getOrdinaryPrice();
+				totalAmt = eachCompo.getQty() * unitPrice;
 				components.setTotalAmt(totalAmt);
 				netAmount += totalAmt;
 				CommonUtills.addDefaultCreateInfos(components, components.getClass(), globalInfo);
@@ -104,6 +118,7 @@ public class BillingServiceImpl implements BillingService {
 	}
 
 	@Override
+	@Transactional
 	public ReceiptDetailDto confirmBillingRequest(ConfirmBilling confirmBill, GlobalInfo globalInfo) {
 		ReceiptDetailDto receiptInfo = new ReceiptDetailDto();
 		try{
@@ -115,6 +130,14 @@ public class BillingServiceImpl implements BillingService {
 			inv.setDiscountPercent(confirmBill.getDiscountPercent());
 			inv.setPaidAmount(confirmBill.getPaidAmount());
 			inv.setOutstanding(confirmBill.getAmountPay());
+			inv.setEstID(confirmBill.getEstID());
+			inv.setOrderStatus(ORDER_PLACED);
+			inv.setDeliveryDate(parseDate(confirmBill.getDeliveryDate(), "dd/MM/yyyy HH:mm"));
+			inv.setDeliveryAddress(confirmBill.getDeliveryAddress());
+			inv.setPickupType(confirmBill.getPickupType());
+			inv.setPaymentMode(confirmBill.getPayMode());
+			inv.setCardType(confirmBill.getCardType());
+			inv.setExtraChargesAmt(confirmBill.getExtraChargesAmt());
 			CommonUtills.addDefaultCreateInfos(inv, inv.getClass(), globalInfo);
 			invoiceRepo.save(inv);
 			inv.setInvoiceNumber("INV"+inv.getInvID()); //to be change
@@ -129,6 +152,8 @@ public class BillingServiceImpl implements BillingService {
 			paymentRepo.save(pay);
 			pay.setReceiptNumber("BILL"+pay.getPayID()); //to be change
 			paymentRepo.save(pay);
+			inv.setReceiptNo(pay.getReceiptNumber());
+			invoiceRepo.save(inv);
 			
 			billingRepo.updateInvoiceID(inv.getInvoiceNumber(), confirmBill.getEstID());
 			EstimationDetails est = estimationRepo.findById(confirmBill.getEstID()).get();
@@ -193,6 +218,210 @@ public class BillingServiceImpl implements BillingService {
 			ex.printStackTrace();
 		}
 		
+	}
+
+	@Override
+	public List<OrderStatusDto> fetchOrders(String fromDate, String toDate, String receiptNo, String customer,
+			String status) {
+		Date today = startOfDay(new Date());
+		Date from = parseDate(fromDate, "yyyy-MM-dd");
+		Date to = parseDate(toDate, "yyyy-MM-dd");
+		if (from == null) {
+			from = addDays(today, -30);
+		}
+		if (to == null) {
+			to = today;
+		}
+		List<InvoiceDetails> invoices = invoiceRepo.findByInvoicedDateRange(startOfDay(from),
+				addDays(startOfDay(to), 1));
+
+		String receiptFilter = trimToNull(receiptNo);
+		String customerFilter = trimToNull(customer);
+		String statusFilter = trimToNull(status);
+		if (statusFilter != null && "ALL".equalsIgnoreCase(statusFilter)) {
+			statusFilter = null;
+		}
+		Date now = new Date();
+		Date tomorrow = addDays(today, 1);
+		Map<Integer, CustomerInfo> customers = new HashMap<Integer, CustomerInfo>();
+		List<OrderStatusDto> orders = new ArrayList<OrderStatusDto>();
+
+		for (InvoiceDetails inv : invoices) {
+			OrderStatusDto order = toOrderStatus(inv, customers);
+
+			if (receiptFilter != null && !containsIgnoreCase(order.getReceiptNo(), receiptFilter)
+					&& !containsIgnoreCase(order.getInvoiceNo(), receiptFilter)) {
+				continue;
+			}
+			if (customerFilter != null && !containsIgnoreCase(order.getPhoneNo(), customerFilter)
+					&& !containsIgnoreCase(String.valueOf(order.getCustomerId()), customerFilter)) {
+				continue;
+			}
+			if (statusFilter != null) {
+				boolean collected = COLLECTED.equals(order.getOrderStatus());
+				Date delivery = order.getDeliveryDate();
+				if (FILTER_OVERDUE.equals(statusFilter)) {
+					if (collected || delivery == null || !delivery.before(now)) {
+						continue;
+					}
+				} else if (FILTER_FUTURE_DELIVERY.equals(statusFilter)) {
+					if (collected || delivery == null || delivery.before(tomorrow)) {
+						continue;
+					}
+				} else if (!statusFilter.equals(order.getOrderStatus())) {
+					continue;
+				}
+			}
+			orders.add(order);
+		}
+		return orders;
+	}
+
+	@Override
+	@Transactional
+	public OrderStatusDto updateOrderStatus(UpdateOrderStatus request, GlobalInfo globalInfo) {
+		if (request == null || !ORDER_STATUSES.contains(request.getOrderStatus())) {
+			throw new IllegalArgumentException("Invalid order status");
+		}
+		InvoiceDetails inv = invoiceRepo.findById(request.getInvID())
+				.orElseThrow(() -> new IllegalArgumentException("Order not found"));
+		inv.setOrderStatus(request.getOrderStatus());
+		if (COLLECTED.equals(request.getOrderStatus())) {
+			if (inv.getCollectedDate() == null) {
+				inv.setCollectedDate(new Date());
+			}
+		} else {
+			inv.setCollectedDate(null);
+		}
+		CommonUtills.addDefaultUpdateInfos(inv, inv.getClass(), globalInfo);
+		invoiceRepo.save(inv);
+		return toOrderStatus(inv, new HashMap<Integer, CustomerInfo>());
+	}
+
+	private OrderStatusDto toOrderStatus(InvoiceDetails inv, Map<Integer, CustomerInfo> customers) {
+		OrderStatusDto order = new OrderStatusDto();
+		order.setInvID(inv.getInvID());
+		order.setInvoiceNo(inv.getInvoiceNumber());
+		order.setReceiptNo(inv.getReceiptNo() != null ? inv.getReceiptNo() : inv.getInvoiceNumber());
+		order.setBillingDate(inv.getInvoicedDate() != null ? inv.getInvoicedDate() : inv.getCreatedDate());
+		order.setCollectedDate(inv.getCollectedDate());
+		order.setOrderStatus(inv.getOrderStatus() != null ? inv.getOrderStatus() : ORDER_PLACED);
+		order.setPickupType(inv.getPickupType());
+		order.setDeliveryAddress(inv.getDeliveryAddress());
+		order.setPaymentMode(inv.getPaymentMode());
+		order.setInvoicedAmt(inv.getInvoicedAmount());
+		order.setPaidAmt(inv.getPaidAmount());
+		order.setOutstandingAmt(inv.getOutstanding());
+		if (inv.getOutstanding() <= 0.004) {
+			order.setPaymentStatus("PAID");
+		} else if (inv.getPaidAmount() <= 0.004) {
+			order.setPaymentStatus("CREDIT");
+		} else {
+			order.setPaymentStatus("PARTIAL");
+		}
+
+		CustomerInfo customer = customers.get(inv.getCusID());
+		if (customer == null && !customers.containsKey(inv.getCusID())) {
+			customer = customRepo.findByQatarId(Long.valueOf(inv.getCusID()));
+			customers.put(inv.getCusID(), customer);
+		}
+		order.setCustomerId(Long.valueOf(inv.getCusID()));
+		if (customer != null) {
+			order.setCustomerName(customer.getCustomerName());
+			order.setPhoneNo(customer.getMobileNo());
+			if (order.getDeliveryAddress() == null) {
+				order.setDeliveryAddress(customer.getAddress());
+			}
+		}
+
+		List<BilledComponents> components = inv.getInvoiceNumber() != null
+				? billingRepo.fetchBillingCompoByInvoiceNo(inv.getInvoiceNumber())
+				: new ArrayList<BilledComponents>();
+		Map<String, Integer> qtyByItem = new LinkedHashMap<String, Integer>();
+		int totalQty = 0;
+		for (BilledComponents compo : components) {
+			int qty = parseQty(compo.getQty());
+			totalQty += qty;
+			String name = compo.getItemName() != null ? compo.getItemName() : "Item";
+			Integer current = qtyByItem.get(name);
+			qtyByItem.put(name, (current == null ? 0 : current) + qty);
+		}
+		StringBuilder details = new StringBuilder();
+		for (Map.Entry<String, Integer> entry : qtyByItem.entrySet()) {
+			if (details.length() > 0) {
+				details.append(", ");
+			}
+			details.append(entry.getKey()).append(" x ").append(entry.getValue());
+		}
+		order.setNoOfItems(totalQty);
+		order.setItemDetails(details.toString());
+
+		Date delivery = inv.getDeliveryDate();
+		if (delivery == null) {
+			Integer estID = inv.getEstID();
+			if (estID == null && !components.isEmpty()) {
+				estID = components.get(0).getEstimateID();
+			}
+			if (estID != null) {
+				EstimationDetails est = estimationRepo.findById(estID).orElse(null);
+				if (est != null) {
+					delivery = est.getDeliveryDate();
+				}
+			}
+		}
+		order.setDeliveryDate(delivery);
+		return order;
+	}
+
+	private static int parseQty(String qty) {
+		try {
+			return qty == null ? 0 : (int) Math.round(Double.parseDouble(qty.trim()));
+		} catch (NumberFormatException ex) {
+			return 0;
+		}
+	}
+
+	private static Date parseDate(String value, String format) {
+		String text = trimToNull(value);
+		if (text == null) {
+			return null;
+		}
+		try {
+			SimpleDateFormat sf = new SimpleDateFormat(format);
+			sf.setLenient(false);
+			return sf.parse(text);
+		} catch (ParseException ex) {
+			return null;
+		}
+	}
+
+	private static Date startOfDay(Date date) {
+		Calendar cal = Calendar.getInstance();
+		cal.setTime(date);
+		cal.set(Calendar.HOUR_OF_DAY, 0);
+		cal.set(Calendar.MINUTE, 0);
+		cal.set(Calendar.SECOND, 0);
+		cal.set(Calendar.MILLISECOND, 0);
+		return cal.getTime();
+	}
+
+	private static Date addDays(Date date, int days) {
+		Calendar cal = Calendar.getInstance();
+		cal.setTime(date);
+		cal.add(Calendar.DATE, days);
+		return cal.getTime();
+	}
+
+	private static String trimToNull(String value) {
+		if (value == null) {
+			return null;
+		}
+		String trimmed = value.trim();
+		return trimmed.isEmpty() ? null : trimmed;
+	}
+
+	private static boolean containsIgnoreCase(String value, String search) {
+		return value != null && value.toLowerCase().contains(search.toLowerCase());
 	}
 
 }
