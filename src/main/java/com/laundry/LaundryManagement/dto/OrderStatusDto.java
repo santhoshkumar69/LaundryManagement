@@ -23,6 +23,33 @@ public class OrderStatusDto {
 	private String orderStatus;
 	private String pickupType;
 	private String deliveryAddress;
+	private String paymentMethods;
+	private double extraChargesAmt;
+	private double discountAmt;
+
+	public String getPaymentMethods() {
+		return paymentMethods;
+	}
+
+	public void setPaymentMethods(String paymentMethods) {
+		this.paymentMethods = paymentMethods;
+	}
+
+	public double getExtraChargesAmt() {
+		return extraChargesAmt;
+	}
+
+	public void setExtraChargesAmt(double extraChargesAmt) {
+		this.extraChargesAmt = extraChargesAmt;
+	}
+
+	public double getDiscountAmt() {
+		return discountAmt;
+	}
+
+	public void setDiscountAmt(double discountAmt) {
+		this.discountAmt = discountAmt;
+	}
 
 	public int getInvID() {
 		return invID;

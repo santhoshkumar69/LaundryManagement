@@ -26,6 +26,8 @@ import com.laundry.LaundryManagement.dto.BillingInfos;
 import com.laundry.LaundryManagement.dto.ConfirmBilling;
 import com.laundry.LaundryManagement.dto.ErrorResponse;
 import com.laundry.LaundryManagement.dto.OrderStatusDto;
+import com.laundry.LaundryManagement.dto.PayOrderRequest;
+import com.laundry.LaundryManagement.dto.RemoveOrderItemsRequest;
 import com.laundry.LaundryManagement.dto.ReceiptDetailDto;
 import com.laundry.LaundryManagement.dto.ReturnResponse;
 import com.laundry.LaundryManagement.dto.UpdateOrderStatus;
@@ -85,10 +87,9 @@ public class BillingController {
 	public ResponseEntity<List<OrderStatusDto>> getOrderStatus(
 			@RequestParam(value = "fromDate", required = false) String fromDate,
 			@RequestParam(value = "toDate", required = false) String toDate,
-			@RequestParam(value = "receiptNo", required = false) String receiptNo,
-			@RequestParam(value = "customer", required = false) String customer,
+			@RequestParam(value = "search", required = false) String search,
 			@RequestParam(value = "status", required = false) String status) {
-		return ResponseEntity.ok().body(billingService.fetchOrders(fromDate, toDate, receiptNo, customer, status));
+		return ResponseEntity.ok().body(billingService.fetchOrders(fromDate, toDate, search, status));
 	}
 
 	@PostMapping("/updateOrderStatus")
@@ -96,6 +97,51 @@ public class BillingController {
 		try {
 			return ResponseEntity.ok().body(billingService.updateOrderStatus(request,
 					(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ)));
+		} catch (IllegalArgumentException ex) {
+			return ResponseEntity.status(500)
+					.body(new ReturnResponse(ex.getMessage(), AppStatusCode.INTERNAL_ERROR));
+		}
+	}
+
+	@GetMapping("/orderDetail")
+	public ResponseEntity<?> getOrderDetail(@RequestParam("invID") int invID) {
+		try {
+			return ResponseEntity.ok().body(billingService.fetchOrderDetail(invID));
+		} catch (IllegalArgumentException ex) {
+			return ResponseEntity.status(500)
+					.body(new ReturnResponse(ex.getMessage(), AppStatusCode.INTERNAL_ERROR));
+		}
+	}
+
+	@PostMapping("/payOrder")
+	public ResponseEntity<?> payOrder(@RequestBody PayOrderRequest request, HttpSession httpSession) {
+		try {
+			return ResponseEntity.ok().body(billingService.payOrder(request,
+					(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ)));
+		} catch (IllegalArgumentException ex) {
+			return ResponseEntity.status(500)
+					.body(new ReturnResponse(ex.getMessage(), AppStatusCode.INTERNAL_ERROR));
+		}
+	}
+
+	@PostMapping("/removeOrderItems")
+	public ResponseEntity<?> removeOrderItems(@RequestBody RemoveOrderItemsRequest request,
+			HttpSession httpSession) {
+		try {
+			return ResponseEntity.ok().body(billingService.removeOrderItems(request,
+					(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ)));
+		} catch (IllegalArgumentException ex) {
+			return ResponseEntity.status(500)
+					.body(new ReturnResponse(ex.getMessage(), AppStatusCode.INTERNAL_ERROR));
+		}
+	}
+
+	@PostMapping("/deleteOrders")
+	public ResponseEntity<?> deleteOrders(@RequestBody List<Integer> invIDs, HttpSession httpSession) {
+		try {
+			int deleted = billingService.deleteOrders(invIDs,
+					(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ));
+			return ResponseEntity.ok().body(new ReturnResponse(deleted + " order(s) deleted", AppStatusCode.OK));
 		} catch (IllegalArgumentException ex) {
 			return ResponseEntity.status(500)
 					.body(new ReturnResponse(ex.getMessage(), AppStatusCode.INTERNAL_ERROR));

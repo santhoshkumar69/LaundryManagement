@@ -20,7 +20,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface InvoiceDetailRepository extends JpaRepository<InvoiceDetails, Integer>{
 
-	@Query("From InvoiceDetails inv where inv.invoicedDate >= :fromDate and inv.invoicedDate < :toDate order by inv.invID desc")
+	@Query("From InvoiceDetails inv where inv.invoicedDate >= :fromDate and inv.invoicedDate < :toDate"
+			+ " and (inv.activeStatus is null or inv.activeStatus <> 0) order by inv.invID desc")
 	List<InvoiceDetails> findByInvoicedDateRange(@Param("fromDate") Date fromDate, @Param("toDate") Date toDate);
 
 }

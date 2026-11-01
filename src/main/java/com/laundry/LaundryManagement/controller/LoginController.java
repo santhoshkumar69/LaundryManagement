@@ -4,8 +4,11 @@ import javax.servlet.http.HttpSession;
 
 import com.laundry.LaundryManagement.common.CommonUtills;
 import com.laundry.LaundryManagement.constant.AppConstants;
+import com.laundry.LaundryManagement.constant.AppStatus;
 import com.laundry.LaundryManagement.constant.AppStatusCode;
+import com.laundry.LaundryManagement.dto.ChangePasswordRequest;
 import com.laundry.LaundryManagement.dto.ReturnResponse;
+import com.laundry.LaundryManagement.model.GlobalInfo;
 import com.laundry.LaundryManagement.model.UserInfo;
 import com.laundry.LaundryManagement.service.LoginService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +43,16 @@ public class LoginController {
 			return ResponseEntity.ok(authUserInfo);
 		}
 	 
+	}
+
+	@PostMapping(value = "/changePassword")
+	public ResponseEntity<Object> changePassword(@RequestBody ChangePasswordRequest request, HttpSession httpSession) {
+		try {
+			loginService.changePassword(request, (GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ));
+			return ResponseEntity.ok(new ReturnResponse(AppStatus.PASSWORD_UPDATE, AppStatusCode.OK));
+		} catch (IllegalArgumentException ex) {
+			return ResponseEntity.status(500).body(new ReturnResponse(ex.getMessage(), AppStatusCode.INTERNAL_ERROR));
+		}
 	}
 
 }

@@ -79,6 +79,15 @@ public class InvoiceDetails implements Serializable {
 	private String cardType;
 	@Column(name = "EXTRA_CHARGES_AMT")
 	private Double extraChargesAmt;
+	@Column(name = "ACTIVE_STATUS")
+	private Integer activeStatus;
+
+	public Integer getActiveStatus() {
+		return activeStatus;
+	}
+	public void setActiveStatus(Integer activeStatus) {
+		this.activeStatus = activeStatus;
+	}
 
 	public Integer getEstID() {
 		return estID;
