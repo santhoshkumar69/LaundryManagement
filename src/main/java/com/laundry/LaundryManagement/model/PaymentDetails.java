@@ -231,6 +231,50 @@ public class PaymentDetails implements Serializable{
 	public void setPaidMode(String paidMode) {
 		this.paidMode = paidMode;
 	}
-	
-	
+
+	/** Null means the payment counts; RECALLED means it was reversed and no longer counts. */
+	@Column(name = "PAY_STATUS", length = 20)
+	private String payStatus;
+
+	@Column(name = "RECALLED_DATE")
+	private Date recalledDate;
+
+	@Column(name = "RECALLED_BY")
+	private String recalledBy;
+
+	@Column(name = "RECALL_REASON", length = 255)
+	private String recallReason;
+
+	public String getPayStatus() {
+		return payStatus;
+	}
+
+	public void setPayStatus(String payStatus) {
+		this.payStatus = payStatus;
+	}
+
+	public Date getRecalledDate() {
+		return recalledDate;
+	}
+
+	public void setRecalledDate(Date recalledDate) {
+		this.recalledDate = recalledDate;
+	}
+
+	public String getRecalledBy() {
+		return recalledBy;
+	}
+
+	public void setRecalledBy(String recalledBy) {
+		this.recalledBy = recalledBy;
+	}
+
+	public String getRecallReason() {
+		return recallReason;
+	}
+
+	public void setRecallReason(String recallReason) {
+		this.recallReason = recallReason;
+	}
+
 }

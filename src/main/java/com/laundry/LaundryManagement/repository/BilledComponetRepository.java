@@ -36,6 +36,10 @@ public interface BilledComponetRepository extends JpaRepository<BilledComponents
 	@Query("delete BilledComponents compo where compo.estimateID = :estID")
 	Integer deleteAddedComponents(@Param("estID") int estID);
 
+	@Modifying
+	@Query("delete BilledComponents compo where compo.invoiceNo = :invNo")
+	Integer deleteByInvoiceNo(@Param("invNo") String invNo);
+
 	//void deleteById(int itemID);
 
 }

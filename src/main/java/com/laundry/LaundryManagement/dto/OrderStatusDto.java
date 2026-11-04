@@ -1,8 +1,59 @@
 package com.laundry.LaundryManagement.dto;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class OrderStatusDto {
+
+	public static class ItemLine {
+		private int sID;
+		private String itemName;
+		private int qty;
+		private String remarks;
+
+		public int getsID() {
+			return sID;
+		}
+
+		public void setsID(int sID) {
+			this.sID = sID;
+		}
+
+		public String getItemName() {
+			return itemName;
+		}
+
+		public void setItemName(String itemName) {
+			this.itemName = itemName;
+		}
+
+		public int getQty() {
+			return qty;
+		}
+
+		public void setQty(int qty) {
+			this.qty = qty;
+		}
+
+		public String getRemarks() {
+			return remarks;
+		}
+
+		public void setRemarks(String remarks) {
+			this.remarks = remarks;
+		}
+	}
+
+	private List<ItemLine> items = new ArrayList<ItemLine>();
+
+	public List<ItemLine> getItems() {
+		return items;
+	}
+
+	public void setItems(List<ItemLine> items) {
+		this.items = items;
+	}
 
 	private int invID;
 	private String invoiceNo;

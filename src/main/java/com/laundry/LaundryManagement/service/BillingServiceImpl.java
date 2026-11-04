@@ -10,9 +10,13 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import org.springframework.data.domain.PageRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.laundry.LaundryManagement.common.CommonUtills;
 import com.laundry.LaundryManagement.dto.BilledDetails;
+import com.laundry.LaundryManagement.dto.DashboardDto;
 import com.laundry.LaundryManagement.dto.BillingComponets;
 import com.laundry.LaundryManagement.dto.BillingInfos;
 import com.laundry.LaundryManagement.dto.ConfirmBilling;
@@ -28,6 +33,8 @@ import com.laundry.LaundryManagement.dto.OrderStatusDto;
 import com.laundry.LaundryManagement.dto.PayOrderRequest;
 import com.laundry.LaundryManagement.dto.RemoveOrderItemsRequest;
 import com.laundry.LaundryManagement.dto.ReceiptDetailDto;
+import com.laundry.LaundryManagement.dto.RecallPaymentRequest;
+import com.laundry.LaundryManagement.dto.UpdateItemRemarksRequest;
 import com.laundry.LaundryManagement.dto.UpdateOrderStatus;
 import com.laundry.LaundryManagement.model.BilledComponents;
 import com.laundry.LaundryManagement.model.CustomerInfo;
@@ -59,6 +66,10 @@ public class BillingServiceImpl implements BillingService {
 	public static final String COLLECTED = "COLLECTED";
 	public static final String FILTER_OVERDUE = "OVERDUE";
 	public static final String FILTER_FUTURE_DELIVERY = "FUTURE_DELIVERY";
+	public static final String DATE_FIELD_DELIVERY = "DELIVERY";
+	private static final int MAX_REMARKS_LENGTH = 500;
+	private static final int MAX_RECALL_REASON_LENGTH = 255;
+	public static final String PAY_RECALLED = "RECALLED";
 	private static final List<String> ORDER_STATUSES = Arrays.asList(ORDER_PLACED, UNDER_PROCESSING,
 			READY_TO_DELIVER, COLLECTED);
 	private static final List<String> PAYMENT_MODES = Arrays.asList("Cash", "Card");
@@ -98,6 +109,7 @@ public class BillingServiceImpl implements BillingService {
 				components.setItemName(eachCompo.getItemName());
 				components.setEstimateID(est.getEstID());
 				components.setQty(eachCompo.getQty() + "");
+				components.setRemarks(cleanRemarks(eachCompo.getRemarks()));
 
 				List<ItemMasterPriceDetails> priceRows = itemMasterPriceDetailsRepo
 						.findAllByItemMasterId(eachCompo.getItemID());
@@ -228,17 +240,32 @@ public class BillingServiceImpl implements BillingService {
 
 	@Override
 	public List<OrderStatusDto> fetchOrders(String fromDate, String toDate, String search, String status) {
+		return fetchOrders(fromDate, toDate, search, status, null, false);
+	}
+
+	@Override
+	public List<OrderStatusDto> fetchOrders(String fromDate, String toDate, String search, String status,
+			String dateField, boolean includeOverdue) {
+		boolean byDeliveryDate = DATE_FIELD_DELIVERY.equalsIgnoreCase(trimToNull(dateField));
 		Date today = startOfDay(new Date());
 		Date from = parseDate(fromDate, "yyyy-MM-dd");
 		Date to = parseDate(toDate, "yyyy-MM-dd");
 		if (from == null) {
-			from = addDays(today, -30);
+			from = byDeliveryDate ? today : addDays(today, -30);
 		}
 		if (to == null) {
-			to = today;
+			to = byDeliveryDate ? from : today;
 		}
-		List<InvoiceDetails> invoices = invoiceRepo.findByInvoicedDateRange(startOfDay(from),
-				addDays(startOfDay(to), 1));
+		List<InvoiceDetails> invoices;
+		if (byDeliveryDate) {
+			invoices = new ArrayList<InvoiceDetails>();
+			if (includeOverdue) {
+				invoices.addAll(invoiceRepo.findUndeliveredDueBefore(startOfDay(from)));
+			}
+			invoices.addAll(invoiceRepo.findByDeliveryDateRange(startOfDay(from), addDays(startOfDay(to), 1)));
+		} else {
+			invoices = invoiceRepo.findByInvoicedDateRange(startOfDay(from), addDays(startOfDay(to), 1));
+		}
 
 		String searchFilter = trimToNull(search);
 		String statusFilter = trimToNull(status);
@@ -281,6 +308,50 @@ public class BillingServiceImpl implements BillingService {
 	}
 
 	@Override
+	public DashboardDto fetchDashboard() {
+		Date today = startOfDay(new Date());
+		Date tomorrow = addDays(today, 1);
+		DashboardDto dashboard = new DashboardDto();
+		dashboard.setDueToday(invoiceRepo.countUndeliveredDueBetween(today, tomorrow));
+		dashboard.setOverdue(invoiceRepo.countUndeliveredDueBefore(today));
+
+		for (String status : ORDER_STATUSES) {
+			if (!COLLECTED.equals(status)) {
+				dashboard.getOpenByStatus().put(status, 0L);
+			}
+		}
+		Date oldestOpen = null;
+		for (Object[] row : invoiceRepo.summariseOpenByStatus()) {
+			String status = row[0] == null ? ORDER_PLACED : (String) row[0];
+			dashboard.getOpenByStatus().merge(status, ((Number) row[1]).longValue(), Long::sum);
+			Date oldest = (Date) row[2];
+			if (oldest != null && (oldestOpen == null || oldest.before(oldestOpen))) {
+				oldestOpen = oldest;
+			}
+		}
+		dashboard.setOldestOpenBillDate(oldestOpen);
+
+		for (Object[] row : invoiceRepo.summariseBilledBetween(today, tomorrow)) {
+			dashboard.setBillsToday(((Number) row[0]).longValue());
+			dashboard.setBilledToday(round2(((Number) row[1]).doubleValue()));
+		}
+		for (String mode : PAYMENT_MODES) {
+			dashboard.getReceivedToday().put(mode, 0.0);
+		}
+		for (Object[] row : paymentRepo.sumReceivedByModeBetween(today, tomorrow)) {
+			String mode = row[0] == null ? "Other" : (String) row[0];
+			dashboard.getReceivedToday().merge(mode, round2(((Number) row[1]).doubleValue()), Double::sum);
+		}
+		dashboard.setCreditOutstanding(round2(invoiceRepo.sumOutstanding()));
+
+		Map<Integer, CustomerInfo> customers = new HashMap<Integer, CustomerInfo>();
+		for (InvoiceDetails inv : invoiceRepo.findUndeliveredDueBetween(today, tomorrow, PageRequest.of(0, 8))) {
+			dashboard.getNextDeliveries().add(toOrderStatus(inv, customers));
+		}
+		return dashboard;
+	}
+
+	@Override
 	@Transactional
 	public List<OrderStatusDto> updateOrderStatus(UpdateOrderStatus request, GlobalInfo globalInfo) {
 		if (request == null || !ORDER_STATUSES.contains(request.getOrderStatus())) {
@@ -320,17 +391,33 @@ public class BillingServiceImpl implements BillingService {
 		if (invIDs == null || invIDs.isEmpty()) {
 			throw new IllegalArgumentException("Select at least one order");
 		}
-		int deleted = 0;
-		for (InvoiceDetails inv : invoiceRepo.findAllById(invIDs)) {
-			if (inv.getActiveStatus() != null && inv.getActiveStatus() == 0) {
-				continue;
-			}
-			inv.setActiveStatus(0);
-			CommonUtills.addDefaultUpdateInfos(inv, inv.getClass(), globalInfo);
-			invoiceRepo.save(inv);
-			deleted++;
+		List<InvoiceDetails> invoices = invoiceRepo.findAllById(invIDs);
+		if (invoices.isEmpty()) {
+			throw new IllegalArgumentException("Order not found");
 		}
-		return deleted;
+		List<String> delivered = new ArrayList<String>();
+		for (InvoiceDetails inv : invoices) {
+			if (COLLECTED.equals(inv.getOrderStatus())) {
+				delivered.add(inv.getReceiptNo() != null ? inv.getReceiptNo() : inv.getInvoiceNumber());
+			}
+		}
+		if (!delivered.isEmpty()) {
+			throw new IllegalArgumentException(
+					"Delivered bills cannot be deleted: " + String.join(", ", delivered) + ". Nothing was deleted.");
+		}
+		for (InvoiceDetails inv : invoices) {
+			String invoiceNo = inv.getInvoiceNumber();
+			if (invoiceNo != null) {
+				paymentRepo.deleteByInvoiceNumber(invoiceNo);
+				billingRepo.deleteByInvoiceNo(invoiceNo);
+			}
+			if (inv.getEstID() != null) {
+				billingRepo.deleteAddedComponents(inv.getEstID());
+				estimationRepo.deleteEstimation(inv.getEstID());
+			}
+			invoiceRepo.delete(inv);
+		}
+		return invoices.size();
 	}
 
 	@Override
@@ -345,32 +432,50 @@ public class BillingServiceImpl implements BillingService {
 			throw new IllegalArgumentException("Payment details are required");
 		}
 		InvoiceDetails inv = findActiveInvoice(request.getInvID());
-		double amount = round2(request.getAmount());
-		double outstanding = round2(Math.max(inv.getInvoicedAmount() - inv.getPaidAmount(), 0));
-		if (amount < 0) {
-			throw new IllegalArgumentException("Amount cannot be negative");
+		List<PayOrderRequest.Part> parts = request.getParts() != null && !request.getParts().isEmpty()
+				? request.getParts()
+				: Arrays.asList(new PayOrderRequest.Part(request.getPayMode(), request.getAmount()));
+		Set<String> usedModes = new HashSet<String>();
+		double amount = 0;
+		for (PayOrderRequest.Part part : parts) {
+			double partAmount = round2(part.getAmount());
+			if (partAmount < 0) {
+				throw new IllegalArgumentException("Amount cannot be negative");
+			}
+			if (partAmount > 0) {
+				if (!PAYMENT_MODES.contains(part.getPayMode())) {
+					throw new IllegalArgumentException("Payment method must be Cash or Card");
+				}
+				if (!usedModes.add(part.getPayMode())) {
+					throw new IllegalArgumentException("Each payment method can only be used once per payment");
+				}
+			}
+			amount += partAmount;
 		}
+		amount = round2(amount);
+		double outstanding = round2(Math.max(inv.getInvoicedAmount() - inv.getPaidAmount(), 0));
 		if (amount > outstanding + MONEY_TOLERANCE) {
 			throw new IllegalArgumentException("Amount is more than the balance of " + outstanding);
 		}
 		if (amount <= 0 && !request.isMarkDelivered()) {
 			throw new IllegalArgumentException("Enter an amount to pay, or mark the order as delivered");
 		}
-		if (amount > 0) {
-			if (!PAYMENT_MODES.contains(request.getPayMode())) {
-				throw new IllegalArgumentException("Payment method must be Cash or Card");
+		for (PayOrderRequest.Part part : parts) {
+			double partAmount = round2(part.getAmount());
+			if (partAmount <= 0) {
+				continue;
 			}
 			PaymentDetails pay = new PaymentDetails();
 			pay.setInvoiceNumber(inv.getInvoiceNumber());
-			pay.setPaidAmount(amount);
+			pay.setPaidAmount(partAmount);
 			pay.setPayDate(new Date());
-			pay.setPaidMode(request.getPayMode());
+			pay.setPaidMode(part.getPayMode());
 			CommonUtills.addDefaultCreateInfos(pay, pay.getClass(), globalInfo);
 			paymentRepo.save(pay);
 			pay.setReceiptNumber("PAY" + pay.getPayID());
 			paymentRepo.save(pay);
-			inv.setPaidAmount(round2(inv.getPaidAmount() + amount));
 		}
+		inv.setPaidAmount(round2(inv.getPaidAmount() + amount));
 		inv.setOutstanding(round2(Math.max(inv.getInvoicedAmount() - inv.getPaidAmount(), 0)));
 		if (request.isMarkDelivered()) {
 			inv.setOrderStatus(COLLECTED);
@@ -471,6 +576,7 @@ public class BillingServiceImpl implements BillingService {
 				item.setQty(qty);
 				item.setTotalAmt(round2(compo.getTotalAmt()));
 				item.setUnitPrice(qty > 0 ? round2(compo.getTotalAmt() / qty) : 0);
+				item.setRemarks(compo.getRemarks());
 				detail.getItems().add(item);
 			}
 			for (PaymentDetails pay : paymentRepo.findByInvoiceNumber(inv.getInvoiceNumber())) {
@@ -479,10 +585,98 @@ public class BillingServiceImpl implements BillingService {
 				payment.setPaidAmt(round2(pay.getPaidAmount()));
 				payment.setPaidMode(pay.getPaidMode());
 				payment.setPayDate(pay.getPayDate());
+				payment.setPayID(pay.getPayID());
+				boolean recalled = PAY_RECALLED.equals(pay.getPayStatus());
+				payment.setRecalled(recalled);
+				payment.setRecallReason(pay.getRecallReason());
+				payment.setRecalledDate(pay.getRecalledDate());
+				payment.setRecalledBy(pay.getRecalledBy());
+				payment.setRecallable(!recalled && pay.getPaidAmount() > 0 && isRecallableToday(pay));
 				detail.getPayments().add(payment);
 			}
 		}
 		return detail;
+	}
+
+	@Override
+	@Transactional
+	public OrderDetailDto recallPayment(RecallPaymentRequest request, GlobalInfo globalInfo) {
+		if (request == null) {
+			throw new IllegalArgumentException("Choose the payment to recall");
+		}
+		InvoiceDetails inv = findActiveInvoice(request.getInvID());
+		PaymentDetails pay = paymentRepo.findById(request.getPayID()).orElse(null);
+		if (pay == null || inv.getInvoiceNumber() == null || !inv.getInvoiceNumber().equals(pay.getInvoiceNumber())) {
+			throw new IllegalArgumentException("Payment not found on this bill");
+		}
+		if (PAY_RECALLED.equals(pay.getPayStatus())) {
+			throw new IllegalArgumentException(pay.getReceiptNumber() + " is already recalled");
+		}
+		if (pay.getPaidAmount() <= 0) {
+			throw new IllegalArgumentException("There is no amount to recall on " + pay.getReceiptNumber());
+		}
+		if (!isRecallableToday(pay)) {
+			throw new IllegalArgumentException("Payments can only be recalled on the day they were taken");
+		}
+		String reason = request.getReason() == null ? "" : request.getReason().trim();
+		if (reason.isEmpty()) {
+			throw new IllegalArgumentException("Enter a reason for the recall");
+		}
+		if (reason.length() > MAX_RECALL_REASON_LENGTH) {
+			throw new IllegalArgumentException("Keep the reason under " + MAX_RECALL_REASON_LENGTH + " characters");
+		}
+		pay.setPayStatus(PAY_RECALLED);
+		pay.setRecalledDate(new Date());
+		pay.setRecalledBy(globalInfo != null ? globalInfo.getUserName() : null);
+		pay.setRecallReason(reason);
+		paymentRepo.save(pay);
+
+		inv.setPaidAmount(round2(Math.max(inv.getPaidAmount() - pay.getPaidAmount(), 0)));
+		inv.setOutstanding(round2(Math.max(inv.getInvoicedAmount() - inv.getPaidAmount(), 0)));
+		CommonUtills.addDefaultUpdateInfos(inv, inv.getClass(), globalInfo);
+		invoiceRepo.save(inv);
+		return toOrderDetail(inv);
+	}
+
+	private boolean isRecallableToday(PaymentDetails pay) {
+		return pay.getPayDate() != null && startOfDay(pay.getPayDate()).equals(startOfDay(new Date()));
+	}
+
+	@Override
+	@Transactional
+	public OrderStatusDto updateItemRemarks(UpdateItemRemarksRequest request, GlobalInfo globalInfo) {
+		if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
+			throw new IllegalArgumentException("No item remarks to update");
+		}
+		InvoiceDetails inv = findActiveInvoice(request.getInvID());
+		Map<Integer, BilledComponents> lines = new HashMap<Integer, BilledComponents>();
+		if (inv.getInvoiceNumber() != null) {
+			for (BilledComponents compo : billingRepo.fetchBillingCompoByInvoiceNo(inv.getInvoiceNumber())) {
+				lines.put(compo.getsID(), compo);
+			}
+		}
+		for (UpdateItemRemarksRequest.Line change : request.getItems()) {
+			BilledComponents compo = lines.get(change.getsID());
+			if (compo == null) {
+				throw new IllegalArgumentException("Item " + change.getsID() + " is not part of this bill");
+			}
+			String remarks = cleanRemarks(change.getRemarks());
+			if (remarks == null ? compo.getRemarks() != null : !remarks.equals(compo.getRemarks())) {
+				compo.setRemarks(remarks);
+				CommonUtills.addDefaultUpdateInfos(compo, compo.getClass(), globalInfo);
+				billingRepo.save(compo);
+			}
+		}
+		return toOrderStatus(inv, new HashMap<Integer, CustomerInfo>());
+	}
+
+	/** Remarks are optional free text; blank becomes null and long text is cut to the column size. */
+	private static String cleanRemarks(String remarks) {
+		if (remarks == null || remarks.trim().isEmpty()) {
+			return null;
+		}
+		String value = remarks.trim();
+		return value.length() > MAX_REMARKS_LENGTH ? value.substring(0, MAX_REMARKS_LENGTH) : value;
 	}
 
 	private static double round2(double value) {
@@ -506,7 +700,8 @@ public class BillingServiceImpl implements BillingService {
 			StringBuilder methods = new StringBuilder();
 			for (PaymentDetails pay : paymentRepo.findByInvoiceNumber(inv.getInvoiceNumber())) {
 				String mode = pay.getPaidMode();
-				if (pay.getPaidAmount() > 0 && mode != null && methods.indexOf(mode) < 0) {
+				if (pay.getPaidAmount() > 0 && !PAY_RECALLED.equals(pay.getPayStatus()) && mode != null
+						&& methods.indexOf(mode) < 0) {
 					if (methods.length() > 0) {
 						methods.append(", ");
 					}
@@ -551,6 +746,14 @@ public class BillingServiceImpl implements BillingService {
 			String name = compo.getItemName() != null ? compo.getItemName() : "Item";
 			Integer current = qtyByItem.get(name);
 			qtyByItem.put(name, (current == null ? 0 : current) + qty);
+		}
+		for (BilledComponents compo : components) {
+			OrderStatusDto.ItemLine line = new OrderStatusDto.ItemLine();
+			line.setsID(compo.getsID());
+			line.setItemName(compo.getItemName() != null ? compo.getItemName() : "Item");
+			line.setQty(parseQty(compo.getQty()));
+			line.setRemarks(compo.getRemarks());
+			order.getItems().add(line);
 		}
 		StringBuilder details = new StringBuilder();
 		for (Map.Entry<String, Integer> entry : qtyByItem.entrySet()) {

@@ -24,6 +24,10 @@ public interface EstimationRepository extends JpaRepository<EstimationDetails, I
 	@Query("update EstimationDetails est set est.billStatus=1 where est.estID = :estID")
 	Integer updateEstimationStatus(@Param("estID") int estID);
 
+	@Modifying
+	@Query("delete from EstimationDetails est where est.estID = :estID")
+	Integer deleteEstimation(@Param("estID") int estID);
+
 	//EstimationDetails findById(int estID);
 
 }

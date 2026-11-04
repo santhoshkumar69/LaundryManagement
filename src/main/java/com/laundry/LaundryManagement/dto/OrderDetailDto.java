@@ -40,6 +40,15 @@ public class OrderDetailDto {
 		private int qty;
 		private double unitPrice;
 		private double totalAmt;
+		private String remarks;
+
+		public String getRemarks() {
+			return remarks;
+		}
+
+		public void setRemarks(String remarks) {
+			this.remarks = remarks;
+		}
 
 		public int getsID() {
 			return sID;
@@ -118,6 +127,61 @@ public class OrderDetailDto {
 
 		public void setPayDate(Date payDate) {
 			this.payDate = payDate;
+		}
+
+		private int payID;
+		private boolean recalled;
+		private boolean recallable;
+		private String recallReason;
+		private Date recalledDate;
+		private String recalledBy;
+
+		public int getPayID() {
+			return payID;
+		}
+
+		public void setPayID(int payID) {
+			this.payID = payID;
+		}
+
+		public boolean isRecalled() {
+			return recalled;
+		}
+
+		public void setRecalled(boolean recalled) {
+			this.recalled = recalled;
+		}
+
+		public boolean isRecallable() {
+			return recallable;
+		}
+
+		public void setRecallable(boolean recallable) {
+			this.recallable = recallable;
+		}
+
+		public String getRecallReason() {
+			return recallReason;
+		}
+
+		public void setRecallReason(String recallReason) {
+			this.recallReason = recallReason;
+		}
+
+		public Date getRecalledDate() {
+			return recalledDate;
+		}
+
+		public void setRecalledDate(Date recalledDate) {
+			this.recalledDate = recalledDate;
+		}
+
+		public String getRecalledBy() {
+			return recalledBy;
+		}
+
+		public void setRecalledBy(String recalledBy) {
+			this.recalledBy = recalledBy;
 		}
 	}
 }

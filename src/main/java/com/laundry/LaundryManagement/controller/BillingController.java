@@ -24,6 +24,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.laundry.LaundryManagement.dto.BilledDetails;
 import com.laundry.LaundryManagement.dto.BillingInfos;
 import com.laundry.LaundryManagement.dto.ConfirmBilling;
+import com.laundry.LaundryManagement.dto.DashboardDto;
+import com.laundry.LaundryManagement.dto.RecallPaymentRequest;
+import com.laundry.LaundryManagement.dto.UpdateItemRemarksRequest;
 import com.laundry.LaundryManagement.dto.ErrorResponse;
 import com.laundry.LaundryManagement.dto.OrderStatusDto;
 import com.laundry.LaundryManagement.dto.PayOrderRequest;
@@ -88,8 +91,16 @@ public class BillingController {
 			@RequestParam(value = "fromDate", required = false) String fromDate,
 			@RequestParam(value = "toDate", required = false) String toDate,
 			@RequestParam(value = "search", required = false) String search,
-			@RequestParam(value = "status", required = false) String status) {
-		return ResponseEntity.ok().body(billingService.fetchOrders(fromDate, toDate, search, status));
+			@RequestParam(value = "status", required = false) String status,
+			@RequestParam(value = "dateField", required = false) String dateField,
+			@RequestParam(value = "includeOverdue", defaultValue = "false") boolean includeOverdue) {
+		return ResponseEntity.ok()
+				.body(billingService.fetchOrders(fromDate, toDate, search, status, dateField, includeOverdue));
+	}
+
+	@GetMapping("/dashboard")
+	public ResponseEntity<DashboardDto> getDashboard() {
+		return ResponseEntity.ok().body(billingService.fetchDashboard());
 	}
 
 	@PostMapping("/updateOrderStatus")
@@ -129,6 +140,28 @@ public class BillingController {
 			HttpSession httpSession) {
 		try {
 			return ResponseEntity.ok().body(billingService.removeOrderItems(request,
+					(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ)));
+		} catch (IllegalArgumentException ex) {
+			return ResponseEntity.status(500)
+					.body(new ReturnResponse(ex.getMessage(), AppStatusCode.INTERNAL_ERROR));
+		}
+	}
+
+	@PostMapping("/recallPayment")
+	public ResponseEntity<?> recallPayment(@RequestBody RecallPaymentRequest request, HttpSession httpSession) {
+		try {
+			return ResponseEntity.ok().body(billingService.recallPayment(request,
+					(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ)));
+		} catch (IllegalArgumentException ex) {
+			return ResponseEntity.status(500)
+					.body(new ReturnResponse(ex.getMessage(), AppStatusCode.INTERNAL_ERROR));
+		}
+	}
+
+	@PostMapping("/updateItemRemarks")
+	public ResponseEntity<?> updateItemRemarks(@RequestBody UpdateItemRemarksRequest request, HttpSession httpSession) {
+		try {
+			return ResponseEntity.ok().body(billingService.updateItemRemarks(request,
 					(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ)));
 		} catch (IllegalArgumentException ex) {
 			return ResponseEntity.status(500)

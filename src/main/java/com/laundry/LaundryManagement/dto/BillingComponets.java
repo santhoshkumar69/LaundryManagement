@@ -8,6 +8,14 @@ public class BillingComponets {
 	private boolean isUrgent;
 	private boolean ironReq;
 	private boolean laundryReq;
+	private String remarks;
+
+	public String getRemarks() {
+		return remarks;
+	}
+	public void setRemarks(String remarks) {
+		this.remarks = remarks;
+	}
 	
 	/**
 	 * @return the itemID

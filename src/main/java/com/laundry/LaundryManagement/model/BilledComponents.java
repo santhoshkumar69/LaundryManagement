@@ -52,6 +52,8 @@ public class BilledComponents implements Serializable {
 	private double discountPercent;
 	@Column(name = "TOTAL_AMT")
 	private double totalAmt;
+	@Column(name = "REMARKS", length = 500)
+	private String remarks;
 	@Column(name = "CREATED_BY")
 	private String createdBy;
 	@Column(name = "CREATED_DATE")
@@ -274,5 +276,12 @@ public class BilledComponents implements Serializable {
 		this.invoiceNo = invoiceNo;
 	}
 
-	
+	public String getRemarks() {
+		return remarks;
+	}
+
+	public void setRemarks(String remarks) {
+		this.remarks = remarks;
+	}
+
 }
