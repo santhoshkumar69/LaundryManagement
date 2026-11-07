@@ -1,6 +1,7 @@
 package com.laundry.LaundryManagement.model;
 
 import java.io.Serializable;
+import java.util.Date;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -43,6 +44,46 @@ public class TenantDetails implements Serializable{
 	
 	@Column(name = "TENANT_CODE")
 	private String tenantCode;
+
+	@Column(name = "CONTACT_NO")
+	private String contactNo;
+
+	@Column(name = "COUNTRY")
+	private String country;
+
+	/** PARTNER or DIRECT. */
+	@Column(name = "CUSTOMER_TYPE")
+	private String customerType;
+
+	@Column(name = "ALT_CONTACT1_NAME")
+	private String altContact1Name;
+
+	@Column(name = "ALT_CONTACT1_NO")
+	private String altContact1No;
+
+	@Column(name = "ALT_CONTACT1_EMAIL")
+	private String altContact1Email;
+
+	@Column(name = "ALT_CONTACT2_NAME")
+	private String altContact2Name;
+
+	@Column(name = "ALT_CONTACT2_NO")
+	private String altContact2No;
+
+	@Column(name = "ALT_CONTACT2_EMAIL")
+	private String altContact2Email;
+
+	@Column(name = "ACTIVE_STATUS")
+	private Integer activeStatus;
+
+	@Column(name = "CREATED_DATE")
+	private Date createdDate;
+
+	@Column(name = "UPDATED_BY")
+	private String updatedBy;
+
+	@Column(name = "UPDATED_DATE")
+	private Date updatedDate;
 
 	public Integer getId() {
 		return id;

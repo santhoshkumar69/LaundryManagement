@@ -17,7 +17,7 @@ import lombok.Data;
 @Data
 public class UserInfo implements Serializable{
 	
-	 UserInfo()
+	public UserInfo()
 	{
 		activeStatus = 1;
 	}

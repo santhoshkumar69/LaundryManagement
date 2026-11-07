@@ -7,7 +7,6 @@ import com.laundry.LaundryManagement.model.OutletDetails;
 
 @Repository
 public interface OutletDetailsRepo extends JpaRepository<OutletDetails, Integer> {
-	
-	
 
+	long countByTenantId(int tenantId);
 }

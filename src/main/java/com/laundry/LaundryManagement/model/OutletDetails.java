@@ -1,6 +1,7 @@
 package com.laundry.LaundryManagement.model;
 
 import java.io.Serializable;
+import java.util.Date;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -31,6 +32,69 @@ public class OutletDetails implements Serializable {
 	
 	@Column(name = "OUTLET_CODE")
 	private String outletCode;
+
+	@Column(name = "CITY")
+	private String city;
+
+	@Column(name = "STATE")
+	private String state;
+
+	@Column(name = "COUNTRY")
+	private String country;
+
+	@Column(name = "POSTAL_CODE")
+	private String postalCode;
+
+	/** ISO 4217 code, e.g. QAR. */
+	@Column(name = "CURRENCY")
+	private String currency;
+
+	@Column(name = "MOBILE_NO")
+	private String mobileNo;
+
+	@Column(name = "EMAIL_ID")
+	private String emailId;
+
+	@Column(name = "ADDRESS")
+	private String address;
+
+	@Column(name = "REG_NO1")
+	private String regNo1;
+
+	@Column(name = "REG_NO2")
+	private String regNo2;
+
+	@Column(name = "LOGO_DATA", columnDefinition = "MEDIUMTEXT")
+	private String logoData;
+
+	@Column(name = "DATE_FORMAT")
+	private String dateFormat;
+
+	@Column(name = "TIME_FORMAT")
+	private String timeFormat;
+
+	@Column(name = "TIME_ZONE")
+	private String timeZone;
+
+	/** NONE, 0.05, 0.10, 0.25, 0.50 or 1.00. */
+	@Column(name = "ROUND_OFF")
+	private String roundOff;
+
+	@Column(name = "DECIMAL_SYMBOL")
+	private String decimalSymbol;
+
+	/** Month (1-12) the financial year starts in. */
+	@Column(name = "FINANCIAL_YEAR_START")
+	private Integer financialYearStart;
+
+	@Column(name = "CREATED_DATE")
+	private Date createdDate;
+
+	@Column(name = "UPDATED_BY")
+	private String updatedBy;
+
+	@Column(name = "UPDATED_DATE")
+	private Date updatedDate;
 
 	public String getOutletName() {
 		return outletName;
