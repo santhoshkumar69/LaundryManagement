@@ -3,6 +3,8 @@ package com.laundry.LaundryManagement.dto;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class RemoveOrderItemsRequest {
 
 	private int invID;
@@ -25,6 +27,7 @@ public class RemoveOrderItemsRequest {
 	}
 
 	public static class Line {
+		@JsonProperty("sID")
 		private int sID;
 		private int removeQty;
 

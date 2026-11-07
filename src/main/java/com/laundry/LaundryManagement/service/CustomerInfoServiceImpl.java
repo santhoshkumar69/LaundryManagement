@@ -3,7 +3,7 @@ package com.laundry.LaundryManagement.service;
 import java.util.List;
 import java.util.Optional;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 
 import com.laundry.LaundryManagement.model.CustomerInfo;
 import org.springframework.beans.factory.annotation.Autowired;

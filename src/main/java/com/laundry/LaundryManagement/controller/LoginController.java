@@ -1,6 +1,6 @@
 package com.laundry.LaundryManagement.controller;
 
-import javax.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpSession;
 
 import com.laundry.LaundryManagement.common.CommonUtills;
 import com.laundry.LaundryManagement.constant.AppConstants;

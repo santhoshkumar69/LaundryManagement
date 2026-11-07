@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import javax.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpSession;
 
 import com.laundry.LaundryManagement.common.CommonUtills;
 import com.laundry.LaundryManagement.constant.AppConstants;

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class OrderDetailDto {
 
 	private OrderStatusDto order;
@@ -35,6 +37,7 @@ public class OrderDetailDto {
 	}
 
 	public static class Item {
+		@JsonProperty("sID")
 		private int sID;
 		private String itemName;
 		private int qty;

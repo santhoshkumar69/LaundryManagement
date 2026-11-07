@@ -1,9 +1,9 @@
 package com.laundry.LaundryManagement.model;
-import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.UuidGenerator;
 
 import lombok.Data;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "files")
@@ -11,8 +11,7 @@ import javax.persistence.*;
 public class ExcelFile {
 
     @Id
-    @GeneratedValue(generator = "uuid")
-    @GenericGenerator(name = "uuid", strategy = "uuid2")
+    @UuidGenerator
     private String id;
 
     private String fileName;

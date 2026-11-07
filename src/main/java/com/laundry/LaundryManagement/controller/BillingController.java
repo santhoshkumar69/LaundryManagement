@@ -2,7 +2,7 @@ package com.laundry.LaundryManagement.controller;
 
 import java.util.List;
 
-import javax.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpSession;
 
 import com.laundry.LaundryManagement.constant.AppConstants;
 import com.laundry.LaundryManagement.model.CustomerInfo;

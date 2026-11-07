@@ -2,7 +2,7 @@ package com.laundry.LaundryManagement.model;
 
 import java.util.Date;
 
-import javax.persistence.Column;
+import jakarta.persistence.Column;
 
 import lombok.Data;
 
