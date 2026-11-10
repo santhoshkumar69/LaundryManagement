@@ -27,7 +27,7 @@ public class AuthService {
 		}
 	}
 
-	public record Session(String token, Long userId, String userName, String role, String tenantCode,
+	public record Session(String token, String userId, String userName, String role, String tenantCode,
 			String companyName, OutletOption outlet, List<OutletOption> outlets) {
 	}
 
@@ -64,8 +64,8 @@ public class AuthService {
 	@Autowired
 	private AuthTokenService tokens;
 
-	public Session login(String tenantCode, Long loginId, String password) {
-		if (tenantCode == null || tenantCode.isBlank() || loginId == null || password == null || password.isEmpty()) {
+	public Session login(String tenantCode, String loginId, String password) {
+		if (tenantCode == null || tenantCode.isBlank() || loginId == null || loginId.isBlank() || password == null || password.isEmpty()) {
 			throw new AuthException("Enter your tenant ID, login ID and password");
 		}
 		return RequestScope.asSystem(() -> {
@@ -73,7 +73,7 @@ public class AuthService {
 			if (tenant == null || Objects.equals(tenant.getActiveStatus(), 0)) {
 				throw new AuthException("Invalid tenant ID, login ID or password");
 			}
-			UserInfo user = userRepo.findForLogin(tenant.getId(), loginId, password);
+			UserInfo user = userRepo.findForLogin(tenant.getId(), loginId.trim(), password);
 			if (user == null) {
 				throw new AuthException("Invalid tenant ID, login ID or password");
 			}

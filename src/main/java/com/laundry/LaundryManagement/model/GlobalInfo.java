@@ -19,7 +19,7 @@ public class GlobalInfo implements Serializable{
 	private static final long serialVersionUID = 1L;
 	private String userName;
 	private String userRole;
-	private Long userId;
+	private String userId;
 	private String locationID;
 	private int status;
 	
@@ -44,7 +44,7 @@ public class GlobalInfo implements Serializable{
 	public String getUserRole() {
 		return userRole;
 	}
-	public Long getUserId() {
+	public String getUserId() {
 		return userId;
 	}
 	public String getLocationID() {
@@ -56,7 +56,7 @@ public class GlobalInfo implements Serializable{
 	public void setUserRole(String userRole) {
 		this.userRole = userRole;
 	}
-	public void setUserId(Long userId) {
+	public void setUserId(String userId) {
 		this.userId = userId;
 	}
 	public void setLocationID(String locationID) {
@@ -66,7 +66,7 @@ public class GlobalInfo implements Serializable{
 	public static class Builder{
 		private String userName = "default";
 		private String userRole = "defaultRole";
-		private Long userId = new Long(1233);
+		private String userId = "1233";
 		private String locationID = "QL1";
 	
 		public Builder setUserName(String userName) {
@@ -79,7 +79,7 @@ public class GlobalInfo implements Serializable{
 			return this;
 		}
 		
-		public Builder setUserId(Long userId) {
+		public Builder setUserId(String userId) {
 			this.userId = userId;
 			return this;
 		}

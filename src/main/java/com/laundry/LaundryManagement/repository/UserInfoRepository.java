@@ -19,7 +19,7 @@ public interface UserInfoRepository extends JpaRepository<UserInfo, Long> {
 
 	@Query("select userInfo from UserInfo userInfo where "
 			+ "userInfo.userId = :userId and userInfo.password = :password ")
-	public UserInfo findByLaundryUserId(@Param("userId") Long userId, @Param("password") String password);
+	public UserInfo findByLaundryUserId(@Param("userId") String userId, @Param("password") String password);
 	
 	@Override
 	//@Query("From UserInfo c where c.activeStatus=1")
@@ -41,7 +41,7 @@ public interface UserInfoRepository extends JpaRepository<UserInfo, Long> {
 	
 	@Query("select userInfo from UserInfo userInfo where "
 			+ "userInfo.userId = :userId ")
-	UserInfo findByUserId(@Param("userId") Long userId);
+	UserInfo findByUserId(@Param("userId") String userId);
 	
 	@Modifying
 	@Query("update UserInfo c set c.activeStatus=1 WHERE c.id=:userId")
@@ -54,8 +54,8 @@ public interface UserInfoRepository extends JpaRepository<UserInfo, Long> {
 	public Optional<UserInfo> findById(Integer id);
 
 	@Query("from UserInfo u where u.tenantId = :tenantId and u.userId = :userId and u.password = :password and u.activeStatus = 1")
-	UserInfo findForLogin(@Param("tenantId") int tenantId, @Param("userId") Long userId, @Param("password") String password);
+	UserInfo findForLogin(@Param("tenantId") int tenantId, @Param("userId") String userId, @Param("password") String password);
 
 	@Query("from UserInfo u where u.tenantId = :tenantId and u.userId = :userId")
-	UserInfo findByTenantAndUserId(@Param("tenantId") int tenantId, @Param("userId") Long userId);
+	UserInfo findByTenantAndUserId(@Param("tenantId") int tenantId, @Param("userId") String userId);
 }

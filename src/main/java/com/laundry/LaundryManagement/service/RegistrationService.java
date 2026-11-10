@@ -10,11 +10,11 @@ public interface RegistrationService {
 
 	RegistrationResult register(RegistrationRequest request);
 
-	CompanyProfileDto getCompanyProfile(Long userId);
+	CompanyProfileDto getCompanyProfile(String userId);
 
 	CompanyProfileDto updateCompanyProfile(CompanyProfileDto profile);
 
-	OutletSettingsDto getOutletSettings(Long userId);
+	OutletSettingsDto getOutletSettings(String userId);
 
 	OutletSettingsDto updateOutletSettings(OutletSettingsDto settings);
 }

@@ -23,7 +23,7 @@ public class OutletSettingsController {
 	private RegistrationService registrationService;
 
 	@GetMapping("/get")
-	public ResponseEntity<Object> get(@RequestParam("userId") Long userId) {
+	public ResponseEntity<Object> get(@RequestParam("userId") String userId) {
 		try {
 			return ResponseEntity.ok(registrationService.getOutletSettings(userId));
 		} catch (IllegalArgumentException ex) {

@@ -10,5 +10,5 @@ public class RegistrationResult {
 	private String companyName;
 	private String outletCode;
 	private String outletName;
-	private Long loginId;
+	private String loginId;
 }

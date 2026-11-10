@@ -17,6 +17,7 @@ import com.laundry.LaundryManagement.dto.RegistrationRequest;
 import com.laundry.LaundryManagement.dto.RegistrationResult;
 import com.laundry.LaundryManagement.model.OutletDetails;
 import com.laundry.LaundryManagement.model.TenantDetails;
+import com.laundry.LaundryManagement.auth.LoginIds;
 import com.laundry.LaundryManagement.auth.RequestScope;
 import com.laundry.LaundryManagement.model.RoleDetails;
 import com.laundry.LaundryManagement.model.UserInfo;
@@ -172,10 +173,10 @@ public class RegistrationServiceImpl implements RegistrationService {
 		if (tenant == null) {
 			throw new IllegalArgumentException("No company found with tenant ID " + request.getTenantCode().trim());
 		}
-		if (request.getVerifyUserId() == null || isBlank(request.getVerifyPassword())) {
+		if (isBlank(request.getVerifyUserId()) || isBlank(request.getVerifyPassword())) {
 			throw new IllegalArgumentException("Enter the login ID and password of an existing admin of this company");
 		}
-		UserInfo verifier = userInfoRepository.findForLogin(tenant.getId(), request.getVerifyUserId(), request.getVerifyPassword());
+		UserInfo verifier = userInfoRepository.findForLogin(tenant.getId(), request.getVerifyUserId().trim(), request.getVerifyPassword());
 		if (verifier == null || !ADMIN_ROLE.equalsIgnoreCase(verifier.getRole())) {
 			throw new IllegalArgumentException("That admin login does not belong to tenant " + tenant.getTenantCode());
 		}
@@ -196,9 +197,7 @@ public class RegistrationServiceImpl implements RegistrationService {
 	}
 
 	private void validateLogin(RegistrationRequest request) {
-		if (request.getLoginId() == null || request.getLoginId() <= 0) {
-			throw new IllegalArgumentException("Login ID must be a positive number");
-		}
+		request.setLoginId(LoginIds.requireValid(request.getLoginId()));
 		if (request.getPassword() == null || request.getPassword().length() < MIN_PASSWORD_LENGTH) {
 			throw new IllegalArgumentException("Password must be at least " + MIN_PASSWORD_LENGTH + " characters");
 		}
@@ -207,7 +206,7 @@ public class RegistrationServiceImpl implements RegistrationService {
 	// ---- Company profile ----
 
 	@Override
-	public CompanyProfileDto getCompanyProfile(Long userId) {
+	public CompanyProfileDto getCompanyProfile(String userId) {
 		TenantDetails tenant = tenantOf(activeUser(userId));
 		CompanyProfileDto profile = new CompanyProfileDto();
 		profile.setUserId(userId);
@@ -250,7 +249,7 @@ public class RegistrationServiceImpl implements RegistrationService {
 	// ---- Outlet settings ----
 
 	@Override
-	public OutletSettingsDto getOutletSettings(Long userId) {
+	public OutletSettingsDto getOutletSettings(String userId) {
 		OutletDetails outlet = outletOf(activeUser(userId));
 		OutletSettingsDto settings = new OutletSettingsDto();
 		settings.setUserId(userId);
@@ -335,7 +334,7 @@ public class RegistrationServiceImpl implements RegistrationService {
 	// ---- Lookups ----
 
 	/** The signed-in user; the userId sent by older clients is ignored in favour of the session. */
-	private UserInfo activeUser(Long ignoredUserId) {
+	private UserInfo activeUser(String ignoredUserId) {
 		UserInfo user = userInfoRepository.findById(RequestScope.require().userDbId()).orElse(null);
 		if (user == null || user.getActiveStatus() != 1) {
 			throw new IllegalArgumentException("Your login is no longer active");
@@ -343,7 +342,7 @@ public class RegistrationServiceImpl implements RegistrationService {
 		return user;
 	}
 
-	private UserInfo adminUser(Long ignoredUserId) {
+	private UserInfo adminUser(String ignoredUserId) {
 		UserInfo user = activeUser(ignoredUserId);
 		if (!ADMIN_ROLE.equalsIgnoreCase(user.getRole())) {
 			throw new IllegalArgumentException("Only an admin can change these settings");

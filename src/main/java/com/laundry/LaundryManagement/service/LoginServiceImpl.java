@@ -23,7 +23,7 @@ public class LoginServiceImpl implements LoginService {
 	@Override
 	@Transactional
 	public void changePassword(ChangePasswordRequest request, GlobalInfo globalInfo) {
-		if (request == null || request.getUserId() == null || isBlank(request.getCurrentPassword())
+		if (request == null || isBlank(request.getUserId()) || isBlank(request.getCurrentPassword())
 				|| isBlank(request.getNewPassword())) {
 			throw new IllegalArgumentException("User ID, current password and new password are required");
 		}
@@ -35,10 +35,10 @@ public class LoginServiceImpl implements LoginService {
 			throw new IllegalArgumentException("New password must be different from the current password");
 		}
 		RequestScope.Scope scope = RequestScope.require();
-		if (!request.getUserId().equals(scope.loginId())) {
+		if (!request.getUserId().trim().equalsIgnoreCase(scope.loginId())) {
 			throw new IllegalArgumentException("You can only change your own password");
 		}
-		UserInfo user = userInfoRepo.findForLogin(scope.tenantId(), request.getUserId(), request.getCurrentPassword());
+		UserInfo user = userInfoRepo.findForLogin(scope.tenantId(), scope.loginId(), request.getCurrentPassword());
 		if (user == null) {
 			throw new IllegalArgumentException("Current password is incorrect");
 		}

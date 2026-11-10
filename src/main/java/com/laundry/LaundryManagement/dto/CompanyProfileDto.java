@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class CompanyProfileDto {
 	/** Logged-in user; the profile shown and saved is that user's tenant. */
-	private Long userId;
+	private String userId;
 
 	private String tenantCode;
 	private String companyName;

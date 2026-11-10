@@ -69,7 +69,7 @@ public class AuthTokenService {
 			}
 			return new RequestScope.Scope(
 					Integer.valueOf(parts[0]),
-					Long.valueOf(parts[1]),
+					parts[1],
 					decode(parts[5]),
 					decode(parts[4]),
 					Integer.valueOf(parts[2]),

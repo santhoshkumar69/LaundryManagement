@@ -42,8 +42,8 @@ public class UserInfo implements Serializable{
 	@Column(name = "USER_NAME",  nullable = false)
 	private String userName;
 	
-	@Column(name = "USER_ID",  nullable = false)
-	private Long userId;
+	@Column(name = "USER_ID",  nullable = false, length = 50)
+	private String userId;
 	
 	@Column(name = "PASSWORD",  nullable = false)
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
@@ -96,7 +96,7 @@ public class UserInfo implements Serializable{
 		return userName;
 	}
 
-	public Long getUserId() {
+	public String getUserId() {
 		return userId;
 	}
 
@@ -165,7 +165,7 @@ public class UserInfo implements Serializable{
 		this.userName = userName;
 	}
 
-	public void setUserId(Long userId) {
+	public void setUserId(String userId) {
 		this.userId = userId;
 	}
 

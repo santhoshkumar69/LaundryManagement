@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class OutletSettingsDto {
 	/** Logged-in user; the settings shown and saved are for that user's outlet. */
-	private Long userId;
+	private String userId;
 
 	private String outletCode;
 	private String outletName;

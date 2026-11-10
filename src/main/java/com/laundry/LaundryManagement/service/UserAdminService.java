@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.laundry.LaundryManagement.auth.LoginIds;
 import com.laundry.LaundryManagement.auth.RequestScope;
 import com.laundry.LaundryManagement.model.OutletDetails;
 import com.laundry.LaundryManagement.model.RoleDetails;
@@ -29,11 +30,11 @@ public class UserAdminService {
 
 	private static final int MIN_PASSWORD_LENGTH = 6;
 
-	public record UserSummary(Integer id, Long loginId, String userName, String role, Long mobileNumber, boolean active,
+	public record UserSummary(Integer id, String loginId, String userName, String role, Long mobileNumber, boolean active,
 			List<Integer> outletIds) {
 	}
 
-	public record SaveUserRequest(Integer id, Long loginId, String userName, String password, String role,
+	public record SaveUserRequest(Integer id, String loginId, String userName, String password, String role,
 			Long mobileNumber, List<Integer> outletIds) {
 	}
 
@@ -94,15 +95,13 @@ public class UserAdminService {
 
 		UserInfo user;
 		if (request.id() == null) {
-			if (request.loginId() == null || request.loginId() <= 0) {
-				throw new IllegalArgumentException("Login ID must be a positive number");
-			}
-			if (userRepo.findByTenantAndUserId(scope.tenantId(), request.loginId()) != null) {
-				throw new IllegalArgumentException("Login ID " + request.loginId() + " is already used in your company");
+			String loginId = LoginIds.requireValid(request.loginId());
+			if (userRepo.findByTenantAndUserId(scope.tenantId(), loginId) != null) {
+				throw new IllegalArgumentException("Login ID " + loginId + " is already used in your company");
 			}
 			requirePassword(request.password());
 			user = new UserInfo();
-			user.setUserId(request.loginId());
+			user.setUserId(loginId);
 			user.setPassword(request.password());
 			user.setActiveStatus(1);
 			user.setCreatedBy(scope.userName());

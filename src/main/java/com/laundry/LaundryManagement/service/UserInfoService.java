@@ -15,7 +15,7 @@ public interface UserInfoService {
 	
 	Optional<UserInfo> findOne(Integer id);
 
-	UserInfo findByUserId(Long userId);
+	UserInfo findByUserId(String userId);
 	
 	void activateUser(Integer userId);
 //	

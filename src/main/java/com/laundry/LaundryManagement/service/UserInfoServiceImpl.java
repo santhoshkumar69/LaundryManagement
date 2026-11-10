@@ -60,7 +60,7 @@ public class UserInfoServiceImpl implements UserInfoService {
 	
 	@Override
 	@Transactional
-	public UserInfo findByUserId(Long userId) {
+	public UserInfo findByUserId(String userId) {
 		return userInfoRepo.findByUserId(userId);
 	}
 

@@ -14,7 +14,7 @@ public class RegistrationRequest {
 
 	/** Existing customer only. */
 	private String tenantCode;
-	private Long verifyUserId;
+	private String verifyUserId;
 	private String verifyPassword;
 
 	/** New customer only. */
@@ -39,6 +39,6 @@ public class RegistrationRequest {
 	private String contactNo;
 	private String emailId;
 
-	private Long loginId;
+	private String loginId;
 	private String password;
 }

@@ -13,11 +13,11 @@ public final class RequestScope {
 
 	/**
 	 * @param userDbId primary key of TB_LA_USER_INFO
-	 * @param loginId  the number the user types at login
+	 * @param loginId  the ID the user types at login
 	 * @param outletId chosen outlet, or null before one is chosen
 	 * @param system   internal work (login, sign-up) that must see across tenants
 	 */
-	public record Scope(Integer userDbId, Long loginId, String userName, String role, Integer tenantId,
+	public record Scope(Integer userDbId, String loginId, String userName, String role, Integer tenantId,
 			Integer outletId, boolean system) {
 
 		public boolean isAdmin() {

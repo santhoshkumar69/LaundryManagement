@@ -18,7 +18,7 @@ import com.laundry.LaundryManagement.dto.ReturnResponse;
 @RequestMapping("auth")
 public class AuthController {
 
-	public record LoginRequest(String tenantCode, Long loginId, String password) {
+	public record LoginRequest(String tenantCode, String loginId, String password) {
 	}
 
 	public record SelectOutletRequest(Integer outletId) {

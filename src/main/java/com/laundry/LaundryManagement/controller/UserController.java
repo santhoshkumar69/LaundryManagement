@@ -39,7 +39,7 @@ public class UserController {
 			CommonUtills.addDefaultCreateInfos(userInfo,userInfo.getClass(),RequestScope.globalInfo());
 	        UserInfo aUserInfo = null;
 			if(userInfo.getUserId() != null) {
-				Long userId =  userInfo.getUserId();
+				String userId =  userInfo.getUserId();
 				aUserInfo = userInfoService.findByUserId(userId); 
 			}
 			if(aUserInfo != null) {
@@ -80,8 +80,8 @@ public class UserController {
 			if (userInfoFromDB == null) {
 				return ResponseEntity.notFound().build();
 			}
-			if(userInfo.getUserId() != null && !userInfoFromDB.get().getUserId().equals(userInfo.getUserId())) {
-				Long newUserId = userInfo.getUserId();
+			if(userInfo.getUserId() != null && !userInfoFromDB.get().getUserId().equalsIgnoreCase(userInfo.getUserId())) {
+				String newUserId = userInfo.getUserId();
 				UserInfo aUserInfo = userInfoService.findByUserId(newUserId); 
 				if(aUserInfo != null) {
 					userIdChanged = true;
@@ -115,8 +115,8 @@ public class UserController {
 		}
 		
 		@PostMapping("/deActiveUserInfo")
-		public ResponseEntity<Object> deactiveUserInfoDetails(@RequestParam("userId") Integer userId, HttpSession httpSession) {
-			UserInfo aUserInfo = userInfoService.findByUserId(userId.longValue()); 
+		public ResponseEntity<Object> deactiveUserInfoDetails(@RequestParam("userId") String userId, HttpSession httpSession) {
+			UserInfo aUserInfo = userInfoService.findByUserId(userId); 
 			if(aUserInfo == null) {
 				return ResponseEntity.status(500).body(new ReturnResponse(AppStatus.ID_NOT_EXIST,AppStatusCode.INTERNAL_ERROR));
 			}
@@ -131,9 +131,9 @@ public class UserController {
 		}
 
 		@PostMapping("/activateUserInfo")
-		public ResponseEntity<Object> activeStatausUserInfo(@RequestParam("userId") Integer userId,HttpSession httpSession)
+		public ResponseEntity<Object> activeStatausUserInfo(@RequestParam("userId") String userId,HttpSession httpSession)
 		{
-			UserInfo aUserInfo =userInfoService.findByUserId(userId.longValue()); 
+			UserInfo aUserInfo =userInfoService.findByUserId(userId); 
 			if(aUserInfo == null) {
 				return ResponseEntity.status(500).body(new ReturnResponse(AppStatus.ID_NOT_EXIST,AppStatusCode.INTERNAL_ERROR));
 			}
@@ -157,9 +157,9 @@ public class UserController {
 		}
 		
 		@PostMapping("/getParticularRow")
-		public ResponseEntity<Object> getParticularRow(@RequestParam("userId") Long userId,HttpSession httpSession)
+		public ResponseEntity<Object> getParticularRow(@RequestParam("userId") String userId,HttpSession httpSession)
 		{
-			UserInfo aUserInfo =userInfoService.findByUserId(userId.longValue()); 
+			UserInfo aUserInfo =userInfoService.findByUserId(userId); 
 			if(aUserInfo == null) {
 				return ResponseEntity.status(500).body(new ReturnResponse(AppStatus.ID_NOT_EXIST,AppStatusCode.INTERNAL_ERROR));
 			}
