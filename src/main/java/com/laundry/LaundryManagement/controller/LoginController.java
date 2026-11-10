@@ -1,16 +1,5 @@
 package com.laundry.LaundryManagement.controller;
 
-import jakarta.servlet.http.HttpSession;
-
-import com.laundry.LaundryManagement.common.CommonUtills;
-import com.laundry.LaundryManagement.constant.AppConstants;
-import com.laundry.LaundryManagement.constant.AppStatus;
-import com.laundry.LaundryManagement.constant.AppStatusCode;
-import com.laundry.LaundryManagement.dto.ChangePasswordRequest;
-import com.laundry.LaundryManagement.dto.ReturnResponse;
-import com.laundry.LaundryManagement.model.GlobalInfo;
-import com.laundry.LaundryManagement.model.UserInfo;
-import com.laundry.LaundryManagement.service.LoginService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -19,40 +8,29 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
+import com.laundry.LaundryManagement.constant.AppStatus;
+import com.laundry.LaundryManagement.constant.AppStatusCode;
+import com.laundry.LaundryManagement.dto.ChangePasswordRequest;
+import com.laundry.LaundryManagement.dto.ReturnResponse;
+import com.laundry.LaundryManagement.service.LoginService;
+
+/** Signing in now happens at /auth/login (with tenant ID); this controller keeps password changes. */
 @CrossOrigin(origins = "http://localhost:4200", maxAge = 3600)
 @RestController
 @RequestMapping("login")
 public class LoginController {
 
 	@Autowired
-    LoginService loginService;
-
-	@PostMapping(value = "/validateLoginDetails")
-	public ResponseEntity<Object> validateLoginDetails(@RequestBody UserInfo userinfo, HttpSession httpSession) {
-		if (userinfo == null || userinfo.getUserId() == null || userinfo.getPassword() == null) {
-			return ResponseEntity.status(500)
-					.body(new ReturnResponse("Enter credentials", AppStatusCode.INTERNAL_ERROR));
-		}
-		else {
-			UserInfo authUserInfo = this.loginService.validateLoginCredentials(userinfo);
-			if(authUserInfo == null) {
-				return ResponseEntity.status(500)
-						.body(new ReturnResponse("Invalid credentials", AppStatusCode.INTERNAL_ERROR));
-			}
-			httpSession.setAttribute(AppConstants.SESSION_OBJ, CommonUtills.createSessionObject(authUserInfo));
-			return ResponseEntity.ok(authUserInfo);
-		}
-	 
-	}
+	LoginService loginService;
 
 	@PostMapping(value = "/changePassword")
-	public ResponseEntity<Object> changePassword(@RequestBody ChangePasswordRequest request, HttpSession httpSession) {
+	public ResponseEntity<Object> changePassword(@RequestBody ChangePasswordRequest request) {
 		try {
-			loginService.changePassword(request, (GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ));
+			loginService.changePassword(request, RequestScope.globalInfo());
 			return ResponseEntity.ok(new ReturnResponse(AppStatus.PASSWORD_UPDATE, AppStatusCode.OK));
 		} catch (IllegalArgumentException ex) {
 			return ResponseEntity.status(500).body(new ReturnResponse(ex.getMessage(), AppStatusCode.INTERNAL_ERROR));
 		}
 	}
-
 }

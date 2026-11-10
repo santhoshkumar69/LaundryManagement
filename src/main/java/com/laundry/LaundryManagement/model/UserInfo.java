@@ -1,5 +1,10 @@
 package com.laundry.LaundryManagement.model;
 
+import org.hibernate.annotations.Filter;
+import jakarta.persistence.EntityListeners;
+import com.laundry.LaundryManagement.auth.ScopeFilters;
+import com.laundry.LaundryManagement.auth.ScopeStampingListener;
+
 import java.io.Serializable;
 import java.util.Date;
 
@@ -9,12 +14,15 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import lombok.Data;
 
 @Entity
-@Table(name = "TB_LA_USER_INFO")
+@Table(name = "TB_LA_USER_INFO", uniqueConstraints = @UniqueConstraint(columnNames = { "TENANT_ID", "USER_ID" }))
 @Data
+@Filter(name = ScopeFilters.TENANT)
+@EntityListeners(ScopeStampingListener.class)
 public class UserInfo implements Serializable{
 	
 	public UserInfo()
@@ -32,7 +40,7 @@ public class UserInfo implements Serializable{
 	@Column(name = "USER_NAME",  nullable = false)
 	private String userName;
 	
-	@Column(name = "USER_ID",  nullable = false,unique=true)
+	@Column(name = "USER_ID",  nullable = false)
 	private Long userId;
 	
 	@Column(name = "PASSWORD",  nullable = false)

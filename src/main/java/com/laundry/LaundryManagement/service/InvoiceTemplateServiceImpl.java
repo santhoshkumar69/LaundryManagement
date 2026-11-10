@@ -1,5 +1,7 @@
 package com.laundry.LaundryManagement.service;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
+
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -20,7 +22,6 @@ import com.laundry.LaundryManagement.repository.InvoiceTemplateRepository;
 public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 
 	// Sessions carry no tenant yet; every existing row belongs to tenant 1.
-	private static final int TENANT_ID = 1;
 	private static final int PAPER_WIDTH_MM = 80;
 	private static final List<String> FONT_FAMILIES = Arrays.asList("Roboto", "CourierPrime", "PTSerif");
 	private static final double MIN_FONT_SIZE = 5;
@@ -34,7 +35,7 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 
 	@Override
 	public List<InvoiceTemplateSummary> listTemplates() {
-		return invoiceTemplateRepository.findLive(TENANT_ID).stream().map(InvoiceTemplateSummary::of)
+		return invoiceTemplateRepository.findLive(RequestScope.requireTenantId()).stream().map(InvoiceTemplateSummary::of)
 				.collect(Collectors.toList());
 	}
 
@@ -45,7 +46,7 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 
 	@Override
 	public InvoiceTemplate getAppliedTemplate() {
-		List<InvoiceTemplate> applied = invoiceTemplateRepository.findApplied(TENANT_ID);
+		List<InvoiceTemplate> applied = invoiceTemplateRepository.findApplied(RequestScope.requireTenantId());
 		return applied.isEmpty() ? null : applied.get(0);
 	}
 
@@ -85,11 +86,11 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 			template = new InvoiceTemplate();
 			template.setIsActive(0);
 			template.setActiveStatus(1);
-			template.setTenantId(TENANT_ID);
+			template.setTenantId(RequestScope.requireTenantId());
 			template.setCreatedBy(userName(globalInfo));
 			template.setCreatedDate(new Date());
 		}
-		boolean nameTaken = invoiceTemplateRepository.findLiveByName(TENANT_ID, name).stream()
+		boolean nameTaken = invoiceTemplateRepository.findLiveByName(RequestScope.requireTenantId(), name).stream()
 				.anyMatch(existing -> !existing.getTemplateId().equals(template.getTemplateId()));
 		if (nameTaken) {
 			throw new IllegalArgumentException("A template named \"" + name + "\" already exists");
@@ -112,7 +113,7 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 	@Transactional
 	public List<InvoiceTemplateSummary> applyTemplate(int templateId, GlobalInfo globalInfo) {
 		InvoiceTemplate target = templateId > 0 ? findLive(templateId) : null;
-		for (InvoiceTemplate template : invoiceTemplateRepository.findLive(TENANT_ID)) {
+		for (InvoiceTemplate template : invoiceTemplateRepository.findLive(RequestScope.requireTenantId())) {
 			int flag = target != null && template.getTemplateId().equals(target.getTemplateId()) ? 1 : 0;
 			if (!Integer.valueOf(flag).equals(template.getIsActive())) {
 				template.setIsActive(flag);
@@ -139,7 +140,7 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 	private InvoiceTemplate findLive(int templateId) {
 		InvoiceTemplate template = invoiceTemplateRepository.findById(templateId).orElse(null);
 		if (template == null || !Integer.valueOf(1).equals(template.getActiveStatus())
-				|| !Integer.valueOf(TENANT_ID).equals(template.getTenantId())) {
+				|| !Integer.valueOf(RequestScope.requireTenantId()).equals(template.getTenantId())) {
 			throw new IllegalArgumentException("Template not found");
 		}
 		return template;

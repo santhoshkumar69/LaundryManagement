@@ -1,5 +1,10 @@
 package com.laundry.LaundryManagement.model;
 
+import org.hibernate.annotations.Filter;
+import jakarta.persistence.EntityListeners;
+import com.laundry.LaundryManagement.auth.ScopeFilters;
+import com.laundry.LaundryManagement.auth.ScopeStampingListener;
+
 import java.io.Serializable;
 import java.util.Date;
 
@@ -12,6 +17,9 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "TB_LA_INVOICE_TEMPLATE")
+@Filter(name = ScopeFilters.TENANT)
+@Filter(name = ScopeFilters.OUTLET)
+@EntityListeners(ScopeStampingListener.class)
 public class InvoiceTemplate implements Serializable {
 
 	private static final long serialVersionUID = 1L;
@@ -20,6 +28,9 @@ public class InvoiceTemplate implements Serializable {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "TEMPLATE_ID")
 	private Integer templateId;
+
+	@Column(name = "LOCATION_ID")
+	private String locationID;
 
 	@Column(name = "TEMPLATE_NAME", length = 100, nullable = false)
 	private String templateName;

@@ -1,5 +1,10 @@
 package com.laundry.LaundryManagement.model;
 
+import org.hibernate.annotations.Filter;
+import jakarta.persistence.EntityListeners;
+import com.laundry.LaundryManagement.auth.ScopeFilters;
+import com.laundry.LaundryManagement.auth.ScopeStampingListener;
+
 import java.io.Serializable;
 import java.util.Date;
 
@@ -14,6 +19,8 @@ import lombok.Data;
 @Entity
 @Table(name="TA_LA_COMPANY_PROFILE")
 @Data
+@Filter(name = ScopeFilters.TENANT)
+@EntityListeners(ScopeStampingListener.class)
 public class CompanyProfile  implements Serializable {
 	
 	

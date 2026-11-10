@@ -1,5 +1,7 @@
 package com.laundry.LaundryManagement.controller;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
+
 import java.util.Optional;
 
 import jakarta.servlet.http.HttpSession;
@@ -33,7 +35,7 @@ public class UserRoleController {
 
 	@PostMapping("/createUserRole")
 	public ResponseEntity<Object> createUserRole(@RequestBody RoleDetails roleDetails,HttpSession httpSession){
-		CommonUtills.addDefaultCreateInfos(roleDetails,roleDetails.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		CommonUtills.addDefaultCreateInfos(roleDetails,roleDetails.getClass(),RequestScope.globalInfo());
 		
 		RoleDetails aRoleDetails = null;
 		if(roleDetails.getUserRole() != null)
@@ -84,7 +86,7 @@ public class UserRoleController {
 		setRole.setCreatedBy(setRole.getCreatedBy());
 		setRole.setCreatedDate(setRole.getCreatedDate());
 	     
-		CommonUtills.addDefaultUpdateInfos(setRole, setRole.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		CommonUtills.addDefaultUpdateInfos(setRole, setRole.getClass(),RequestScope.globalInfo());
 		boolean isCreated = userRoleService.createUserRole(setRole);
 		if (isCreated) {
 			return ResponseEntity.ok().body(userRoleService.fetchRoleDetails());
@@ -107,7 +109,7 @@ public class UserRoleController {
 		{
 			return ResponseEntity.status(500).body(new ReturnResponse(AppStatus.ID_ALREADY_DEACTIVATED,AppStatusCode.INTERNAL_ERROR));
 		}
-		CommonUtills.addDefaultUpdateInfos(aRoleDetails, aRoleDetails.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ) );
+		CommonUtills.addDefaultUpdateInfos(aRoleDetails, aRoleDetails.getClass(),RequestScope.globalInfo() );
 		aRoleDetails.setActiveStatus(0);
 		userRoleService.createUserRole(aRoleDetails);
 		
@@ -127,7 +129,7 @@ public class UserRoleController {
 		{
 			return ResponseEntity.status(500).body(new ReturnResponse(AppStatus.ID_ALREADY_ACTIVATED,AppStatusCode.INTERNAL_ERROR));
 		}
-		CommonUtills.addDefaultUpdateInfos(aRoleDetails, aRoleDetails.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ) );
+		CommonUtills.addDefaultUpdateInfos(aRoleDetails, aRoleDetails.getClass(),RequestScope.globalInfo() );
 		aRoleDetails.setActiveStatus(1);
 		userRoleService.createUserRole(aRoleDetails);
 		

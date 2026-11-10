@@ -33,7 +33,7 @@ public interface UserInfoRepository extends JpaRepository<UserInfo, Long> {
 	@Query("from UserInfo userInfo where userInfo.id=id")
 	List<UserInfo> findById();
 	
-	@Query(value = "SELECT user_name FROM tb_la_user_info;",nativeQuery = true)
+	@Query("from UserInfo u")
 	public List<UserInfo> getMobileNoData();
 	
 
@@ -52,4 +52,10 @@ public interface UserInfoRepository extends JpaRepository<UserInfo, Long> {
 	List<UserInfo> getAllDeActiveUser();
 
 	public Optional<UserInfo> findById(Integer id);
+
+	@Query("from UserInfo u where u.tenantId = :tenantId and u.userId = :userId and u.password = :password and u.activeStatus = 1")
+	UserInfo findForLogin(@Param("tenantId") int tenantId, @Param("userId") Long userId, @Param("password") String password);
+
+	@Query("from UserInfo u where u.tenantId = :tenantId and u.userId = :userId")
+	UserInfo findByTenantAndUserId(@Param("tenantId") int tenantId, @Param("userId") Long userId);
 }

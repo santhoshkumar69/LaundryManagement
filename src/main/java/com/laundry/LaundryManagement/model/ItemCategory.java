@@ -1,5 +1,10 @@
 package com.laundry.LaundryManagement.model;
 
+import org.hibernate.annotations.Filter;
+import jakarta.persistence.EntityListeners;
+import com.laundry.LaundryManagement.auth.ScopeFilters;
+import com.laundry.LaundryManagement.auth.ScopeStampingListener;
+
 import java.io.Serializable;
 import java.util.Date;
 import jakarta.persistence.Column;
@@ -8,12 +13,16 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import lombok.Data;
 
 @Entity
-@Table(name = "TB_LA_ITEM_CATEGORY")
+@Table(name = "TB_LA_ITEM_CATEGORY", uniqueConstraints = @UniqueConstraint(columnNames = { "LOCATION_ID", "CATEGORY_NAME" }))
 @Data
+@Filter(name = ScopeFilters.TENANT)
+@Filter(name = ScopeFilters.OUTLET)
+@EntityListeners(ScopeStampingListener.class)
 public class ItemCategory implements Serializable{
 	
 	 ItemCategory()
@@ -31,7 +40,7 @@ public class ItemCategory implements Serializable{
 	@Column(name = "CATEGORY_CODE")
 	private String categoryCode;
 	
-	@Column(name = "CATEGORY_NAME",nullable=false,unique=true)
+	@Column(name = "CATEGORY_NAME",nullable=false)
 	private String categoryName;
 	
 	@Column(name="ACTIVE_STATUS",nullable=false)

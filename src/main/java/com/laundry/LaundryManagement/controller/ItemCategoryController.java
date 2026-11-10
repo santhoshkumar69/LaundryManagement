@@ -1,5 +1,7 @@
 package com.laundry.LaundryManagement.controller;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -45,7 +47,7 @@ public class ItemCategoryController {
 	@PostMapping("/createItemCategory")
 	public ResponseEntity<Object> createItemCategory(@RequestBody ItemCategory itemCategory, HttpSession httpSession) {
 		CommonUtills.addDefaultCreateInfos(itemCategory, itemCategory.getClass(),
-				(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ));
+				RequestScope.globalInfo());
 		ItemCategory aItemCategory = null;
 		if (itemCategory.getCategoryName() != null) {
 			String name = itemCategory.getCategoryName();
@@ -105,7 +107,7 @@ public class ItemCategoryController {
 		aItemCategory.setCategoryName(itemCategoryFromUI.getCategoryName());
 		aItemCategory.setCreatedBy(aItemCategory.getCreatedBy());
 		aItemCategory.setCreatedDate(aItemCategory.getCreatedDate());		
-		CommonUtills.addDefaultUpdateInfos(aItemCategory,aItemCategory.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		CommonUtills.addDefaultUpdateInfos(aItemCategory,aItemCategory.getClass(),RequestScope.globalInfo());
 		boolean isCreated = itemCategoryService.createItemCategory(aItemCategory);
 		if (isCreated) {
 			return ResponseEntity.ok().body(itemCategoryService.fetchItemCategoryDetails());
@@ -136,7 +138,7 @@ public class ItemCategoryController {
 					theCategoryResponses.add(itemCategoryResponse);
 				} else {
 					ItemCategoryResponse itemCategoryResponse = new ItemCategoryResponse();
-					CommonUtills.addDefaultUpdateInfos(aItemCategory, aItemCategory.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ) );
+					CommonUtills.addDefaultUpdateInfos(aItemCategory, aItemCategory.getClass(),RequestScope.globalInfo() );
 					aItemCategory.setActiveStatus(0);
 					itemCategoryService.createItemCategory(aItemCategory);
 					itemCategoryResponse.setStatus(AppConstants.DEACTIVATED);
@@ -179,7 +181,7 @@ public class ItemCategoryController {
 				} else {
 					ItemCategoryResponse itemCategoryResponse = new ItemCategoryResponse();
 					
-					CommonUtills.addDefaultUpdateInfos(aItemCategory, aItemCategory.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ) );
+					CommonUtills.addDefaultUpdateInfos(aItemCategory, aItemCategory.getClass(),RequestScope.globalInfo() );
 					itemCategoryResponse.setStatus(AppConstants.ACTIVATED);
 					itemCategoryResponse.setMessage(AppStatus.ACTIVATED_SUCCESSFULLY);
 					aItemCategory.setActiveStatus(1);

@@ -3,6 +3,8 @@
  */
 package com.laundry.LaundryManagement.controller;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -49,7 +51,7 @@ public class ItemMasterController {
 	
 	@PostMapping("/createitem")
 	public ResponseEntity<Object> createItemDetails(@RequestBody ItemMasterBean itemMasterBean,HttpSession httpSession){
-		//CommonUtills.addDefaultCreateInfos(itemInfo,itemInfo.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		//CommonUtills.addDefaultCreateInfos(itemInfo,itemInfo.getClass(),RequestScope.globalInfo());
 		
 		ItemMaster aItemMaster = null;
 		if(itemMasterBean.getItemName() != null) {
@@ -99,7 +101,7 @@ public class ItemMasterController {
 //		itemMaster.setUnit(itemInfo.getUnit());
 //		itemMaster.setCreatedBy(itemMaster.getCreatedBy());
 //		itemMaster.setCreatedDate(itemMaster.getCreatedDate());
-//		CommonUtills.addDefaultUpdateInfos(itemMaster,itemMaster.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+//		CommonUtills.addDefaultUpdateInfos(itemMaster,itemMaster.getClass(),RequestScope.globalInfo());
 		boolean isCreated = masterService.createItemMaster(itemMasterBean);
 		if(isCreated){
 			return ResponseEntity.ok().body(masterService.fetchItemDetails());
@@ -125,7 +127,7 @@ public class ItemMasterController {
 					theItemMasterBean.add(itemMasterBean);
 				} else {
 					ItemMasterBean itemMasterBean = new ItemMasterBean();
-					CommonUtills.addDefaultUpdateInfos(aItemMaster, aItemMaster.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ) );
+					CommonUtills.addDefaultUpdateInfos(aItemMaster, aItemMaster.getClass(),RequestScope.globalInfo() );
 					aItemMaster.setActiveStatus(0);
 					masterService.saveItemMaster(aItemMaster);
 					itemMasterBean.setActiveStatus(0);
@@ -181,7 +183,7 @@ public class ItemMasterController {
 					theItemMasterBean.add(itemMasterBean);
 				} else {
 					ItemMasterBean itemMasterBean = new ItemMasterBean();
-					CommonUtills.addDefaultUpdateInfos(aItemMaster, aItemMaster.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ) );
+					CommonUtills.addDefaultUpdateInfos(aItemMaster, aItemMaster.getClass(),RequestScope.globalInfo() );
 					aItemMaster.setActiveStatus(1);
 					masterService.saveItemMaster(aItemMaster);
 					itemMasterBean.setActiveStatus(1);

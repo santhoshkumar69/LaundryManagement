@@ -1,5 +1,10 @@
 package com.laundry.LaundryManagement.model;
 
+import org.hibernate.annotations.Filter;
+import jakarta.persistence.EntityListeners;
+import com.laundry.LaundryManagement.auth.ScopeFilters;
+import com.laundry.LaundryManagement.auth.ScopeStampingListener;
+
 import java.io.Serializable;
 import java.util.Date;
 
@@ -15,6 +20,8 @@ import lombok.Data;
 @Entity
 @Table(name = "TB_LA_PAYMENT_TYPE")
 @Data
+@Filter(name = ScopeFilters.TENANT)
+@EntityListeners(ScopeStampingListener.class)
 public class PaymentType implements Serializable {
 
 	private static final long serialVersionUID = 1L;

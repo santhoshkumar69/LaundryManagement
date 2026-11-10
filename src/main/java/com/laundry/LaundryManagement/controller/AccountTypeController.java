@@ -1,5 +1,7 @@
 package com.laundry.LaundryManagement.controller;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
+
 import java.util.Optional;
 
 import jakarta.servlet.http.HttpSession;
@@ -32,7 +34,7 @@ public class AccountTypeController {
 	@PostMapping("/createAccountType")
 	public ResponseEntity<Object> createAccountType(@RequestBody AccountType accountType, HttpSession httpSession)
 	{
-		CommonUtills.addDefaultCreateInfos(accountType, accountType.getClass(), (GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		CommonUtills.addDefaultCreateInfos(accountType, accountType.getClass(), RequestScope.globalInfo());
          AccountType aAccountType = null;
          
          if(accountType.getAccountType() == null)
@@ -80,7 +82,7 @@ public class AccountTypeController {
 		setAccountType.setUpdatedBy(setAccountType.getUpdatedBy());
 		setAccountType.setUpdatedDate(setAccountType.getUpdatedDate());
 		
-		 CommonUtills.addDefaultUpdateInfos(setAccountType, setAccountType.getClass(), (GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		 CommonUtills.addDefaultUpdateInfos(setAccountType, setAccountType.getClass(), RequestScope.globalInfo());
 	     boolean isCreated = accountTypeService.createAccountType(setAccountType);
 	     if(isCreated)
 	     {
@@ -105,7 +107,7 @@ public class AccountTypeController {
 		  {
 			  return ResponseEntity.status(500).body(new ReturnResponse(AppStatus.ID_ALREADY_DEACTIVATED, AppStatusCode.INTERNAL_ERROR));
 		  }
-		  CommonUtills.addDefaultUpdateInfos(aAccountType, aAccountType.getClass(), (GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		  CommonUtills.addDefaultUpdateInfos(aAccountType, aAccountType.getClass(), RequestScope.globalInfo());
 		  
 		  aAccountType.setActiveStatus(0);
 		  accountTypeService.createAccountType(aAccountType);

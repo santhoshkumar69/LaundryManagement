@@ -1,5 +1,10 @@
 package com.laundry.LaundryManagement.model;
 
+import org.hibernate.annotations.Filter;
+import jakarta.persistence.EntityListeners;
+import com.laundry.LaundryManagement.auth.ScopeFilters;
+import com.laundry.LaundryManagement.auth.ScopeStampingListener;
+
 import java.io.Serializable;
 import java.util.Date;
 
@@ -15,6 +20,9 @@ import lombok.Data;
 @Entity
 @Table(name = "TB_LA_OUTGOING_PAYMENT")
 @Data
+@Filter(name = ScopeFilters.TENANT)
+@Filter(name = ScopeFilters.OUTLET)
+@EntityListeners(ScopeStampingListener.class)
 public class OutGoingPayment implements Serializable {
 	
 	public OutGoingPayment()
@@ -28,6 +36,9 @@ public class OutGoingPayment implements Serializable {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "ID")
 	private Integer id;
+
+	@Column(name = "TENANT_ID")
+	private Integer tenantId;
 
 	@Column(name = "ENTRY_DATE")
 	private Date entryDate;

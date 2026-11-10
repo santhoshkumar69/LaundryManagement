@@ -1,5 +1,7 @@
 package com.laundry.LaundryManagement.controller;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
+
 import java.util.List;
 
 import jakarta.servlet.http.HttpSession;
@@ -70,19 +72,19 @@ public class BillingController {
 	
 	@PostMapping("/createEstimation")
 	public ResponseEntity<?> createBillingComponents(@RequestBody BillingInfos billingReq, HttpSession httpSession){
-		BilledDetails billedCompos = billingService.createEstimationDetails(billingReq,(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		BilledDetails billedCompos = billingService.createEstimationDetails(billingReq,RequestScope.globalInfo());
 		return ResponseEntity.ok().body(billedCompos);
 	}
 	
 	@PostMapping("/confirmBilling")
 	public ResponseEntity<?> confirmBillingDetails(@RequestBody ConfirmBilling confirmBill, HttpSession httpSession) {
-		ReceiptDetailDto receiptInfo = billingService.confirmBillingRequest(confirmBill, (GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		ReceiptDetailDto receiptInfo = billingService.confirmBillingRequest(confirmBill, RequestScope.globalInfo());
 		return ResponseEntity.ok().body(receiptInfo);
 	}
 	
 	@PostMapping("/cancelBilling")
 	public ResponseEntity<?> cancelBillingReqest(@RequestBody ConfirmBilling confirmBill, HttpSession httpSession) {
-		billingService.cancelBillingRequest(confirmBill, (GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		billingService.cancelBillingRequest(confirmBill, RequestScope.globalInfo());
 		return ResponseEntity.ok().body("Cancelled successfully");
 	}
 	
@@ -107,7 +109,7 @@ public class BillingController {
 	public ResponseEntity<?> updateOrderStatus(@RequestBody UpdateOrderStatus request, HttpSession httpSession) {
 		try {
 			return ResponseEntity.ok().body(billingService.updateOrderStatus(request,
-					(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ)));
+					RequestScope.globalInfo()));
 		} catch (IllegalArgumentException ex) {
 			return ResponseEntity.status(500)
 					.body(new ReturnResponse(ex.getMessage(), AppStatusCode.INTERNAL_ERROR));
@@ -128,7 +130,7 @@ public class BillingController {
 	public ResponseEntity<?> payOrder(@RequestBody PayOrderRequest request, HttpSession httpSession) {
 		try {
 			return ResponseEntity.ok().body(billingService.payOrder(request,
-					(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ)));
+					RequestScope.globalInfo()));
 		} catch (IllegalArgumentException ex) {
 			return ResponseEntity.status(500)
 					.body(new ReturnResponse(ex.getMessage(), AppStatusCode.INTERNAL_ERROR));
@@ -140,7 +142,7 @@ public class BillingController {
 			HttpSession httpSession) {
 		try {
 			return ResponseEntity.ok().body(billingService.removeOrderItems(request,
-					(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ)));
+					RequestScope.globalInfo()));
 		} catch (IllegalArgumentException ex) {
 			return ResponseEntity.status(500)
 					.body(new ReturnResponse(ex.getMessage(), AppStatusCode.INTERNAL_ERROR));
@@ -151,7 +153,7 @@ public class BillingController {
 	public ResponseEntity<?> recallPayment(@RequestBody RecallPaymentRequest request, HttpSession httpSession) {
 		try {
 			return ResponseEntity.ok().body(billingService.recallPayment(request,
-					(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ)));
+					RequestScope.globalInfo()));
 		} catch (IllegalArgumentException ex) {
 			return ResponseEntity.status(500)
 					.body(new ReturnResponse(ex.getMessage(), AppStatusCode.INTERNAL_ERROR));
@@ -162,7 +164,7 @@ public class BillingController {
 	public ResponseEntity<?> updateItemRemarks(@RequestBody UpdateItemRemarksRequest request, HttpSession httpSession) {
 		try {
 			return ResponseEntity.ok().body(billingService.updateItemRemarks(request,
-					(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ)));
+					RequestScope.globalInfo()));
 		} catch (IllegalArgumentException ex) {
 			return ResponseEntity.status(500)
 					.body(new ReturnResponse(ex.getMessage(), AppStatusCode.INTERNAL_ERROR));
@@ -173,7 +175,7 @@ public class BillingController {
 	public ResponseEntity<?> deleteOrders(@RequestBody List<Integer> invIDs, HttpSession httpSession) {
 		try {
 			int deleted = billingService.deleteOrders(invIDs,
-					(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ));
+					RequestScope.globalInfo());
 			return ResponseEntity.ok().body(new ReturnResponse(deleted + " order(s) deleted", AppStatusCode.OK));
 		} catch (IllegalArgumentException ex) {
 			return ResponseEntity.status(500)

@@ -1,5 +1,7 @@
 package com.laundry.LaundryManagement.controller;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
+
 import java.util.Optional;
 
 import jakarta.servlet.http.HttpSession;
@@ -33,7 +35,7 @@ public class OutGoingPaymentController {
 	public ResponseEntity<Object> createOutGoingPayment(@RequestBody OutGoingPayment outGoingPayment, HttpSession httpSession)
 	{
 		
-		CommonUtills.addDefaultCreateInfos(outGoingPayment, outGoingPayment.getClass(), (GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		CommonUtills.addDefaultCreateInfos(outGoingPayment, outGoingPayment.getClass(), RequestScope.globalInfo());
 	    OutGoingPayment aOutGoingPayment = null;
 	    if(outGoingPayment.getAccountType() == null)
 	    {
@@ -84,7 +86,7 @@ public class OutGoingPaymentController {
 	  setOutGoingPayment.setCreatedDate(setOutGoingPayment.getCreatedDate());
 	  
 	  
-	  CommonUtills.addDefaultUpdateInfos(setOutGoingPayment, outGoingPayment.getClass(), (GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ));
+	  CommonUtills.addDefaultUpdateInfos(setOutGoingPayment, outGoingPayment.getClass(), RequestScope.globalInfo());
      boolean isCreated = outGoingPaymentService.createOutGoingPayment(setOutGoingPayment);
      if(isCreated)
      {
@@ -111,7 +113,7 @@ public class OutGoingPaymentController {
 	  {
 		return ResponseEntity.status(500).body(new ReturnResponse(AppStatus.VOID_REASON, AppStatusCode.INTERNAL_ERROR));  
 	  }
-	  CommonUtills.addDefaultUpdateInfos(aoutgoingPayment, aoutgoingPayment.getClass(), (GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+	  CommonUtills.addDefaultUpdateInfos(aoutgoingPayment, aoutgoingPayment.getClass(), RequestScope.globalInfo());
 	  aoutgoingPayment.setVoidReason(outgoingPayment.getVoidReason());
 	  aoutgoingPayment.setActiveStatus(0);
 	  outGoingPaymentService.createOutGoingPayment(aoutgoingPayment);

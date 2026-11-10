@@ -1,5 +1,10 @@
 package com.laundry.LaundryManagement.model;
 
+import org.hibernate.annotations.Filter;
+import jakarta.persistence.EntityListeners;
+import com.laundry.LaundryManagement.auth.ScopeFilters;
+import com.laundry.LaundryManagement.auth.ScopeStampingListener;
+
 import java.io.Serializable;
 import java.util.Date;
 
@@ -9,12 +14,15 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import lombok.Data;
 
 @Entity
-@Table(name = "TB_LA_USER_ROLE")
+@Table(name = "TB_LA_USER_ROLE", uniqueConstraints = @UniqueConstraint(columnNames = { "TENANT_ID", "USER_ROLE" }))
 @Data
+@Filter(name = ScopeFilters.TENANT)
+@EntityListeners(ScopeStampingListener.class)
 public class RoleDetails implements Serializable{
 	
 	public RoleDetails() 
@@ -28,7 +36,7 @@ public class RoleDetails implements Serializable{
 	@Column(name = "ID")
 	private Integer id;
 	
-	@Column(name = "USER_ROLE",nullable=false,unique=true)
+	@Column(name = "USER_ROLE",nullable=false)
 	public String userRole;
 	
 	@Column(name="ACTIVE_STATUS",nullable=false)

@@ -1,5 +1,7 @@
 package com.laundry.LaundryManagement.controller;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
+
 
 
 import java.util.Optional;
@@ -34,7 +36,7 @@ public class ClientController {
 
 	@PostMapping("/createCustomerInfo")
 	public ResponseEntity<Object> createCustomerDetails(@RequestBody CustomerInfo customerInfo, HttpSession httpSession) {
-		CommonUtills.addDefaultCreateInfos(customerInfo, customerInfo.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		CommonUtills.addDefaultCreateInfos(customerInfo, customerInfo.getClass(),RequestScope.globalInfo());
 		
 		CustomerInfo acustomerInfo=null;
 		boolean hasMobileNo = customerInfo.getMobileNo() != null && !customerInfo.getMobileNo().isEmpty();
@@ -120,7 +122,7 @@ public class ClientController {
 		info.setCreatedBy(info.getCreatedBy());
 		info.setCreatedDate(info.getCreatedDate());
 		
-		CommonUtills.addDefaultUpdateInfos(info,info.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		CommonUtills.addDefaultUpdateInfos(info,info.getClass(),RequestScope.globalInfo());
 		boolean isCreated = customerInfoService.createCustomerInfo(info);
 		if (isCreated) {
 			return ResponseEntity.ok().body(customerInfoService.fetchCustomerInfoDetails());
@@ -143,7 +145,7 @@ public class ClientController {
 		{
 			return ResponseEntity.status(500).body(new ReturnResponse(AppStatus.ID_ALREADY_ACTIVATED,AppStatusCode.INTERNAL_ERROR));
 		}
-		CommonUtills.addDefaultUpdateInfos(aCustomerInfo, aCustomerInfo.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ) );
+		CommonUtills.addDefaultUpdateInfos(aCustomerInfo, aCustomerInfo.getClass(),RequestScope.globalInfo() );
 		aCustomerInfo.setActiveStatus(0);
 		customerInfoService.createCustomerInfo(aCustomerInfo);
 		//customerInfoService.deactivateCustomerInfo(customerId);
@@ -162,7 +164,7 @@ public class ClientController {
 		{
 			return ResponseEntity.status(500).body(new ReturnResponse(AppStatus.ID_ALREADY_ACTIVATED,AppStatusCode.INTERNAL_ERROR));
 		}
-		CommonUtills.addDefaultUpdateInfos(aCustomerInfo, aCustomerInfo.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ) );
+		CommonUtills.addDefaultUpdateInfos(aCustomerInfo, aCustomerInfo.getClass(),RequestScope.globalInfo() );
 		aCustomerInfo.setActiveStatus(1);
 		customerInfoService.createCustomerInfo(aCustomerInfo);
 		//customerInfoService.deactivateCustomerInfo(customerId);

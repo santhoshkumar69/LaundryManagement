@@ -6,7 +6,6 @@ import com.laundry.LaundryManagement.model.UserInfo;
 
 public interface LoginService {
 	
-	UserInfo validateLoginCredentials(UserInfo userinfo);
 
 	void changePassword(ChangePasswordRequest request, GlobalInfo globalInfo);
 

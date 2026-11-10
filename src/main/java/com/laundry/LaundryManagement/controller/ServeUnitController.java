@@ -1,5 +1,7 @@
 package com.laundry.LaundryManagement.controller;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -59,8 +61,8 @@ public class ServeUnitController {
 					theServeUnitResponse.add(serveUnitResponse);
 				} else {
 					ServeUnitResponse serveUnitResponse = new ServeUnitResponse();
-					//CommonUtills.addDefaultUpdateInfos(aUnit, aUnit.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ) );
-					CommonUtills.addDefaultUpdateInfos(aUnit, aUnit.getClass(), (GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+					//CommonUtills.addDefaultUpdateInfos(aUnit, aUnit.getClass(),RequestScope.globalInfo() );
+					CommonUtills.addDefaultUpdateInfos(aUnit, aUnit.getClass(), RequestScope.globalInfo());
 					aUnit.setActiveStatus(0);
 					serveUnitService.createUnit(aUnit);
 					serveUnitResponse.setActiveStatus(0);
@@ -96,7 +98,7 @@ public class ServeUnitController {
 					theServeUnitResponse.add(serveUnitResponse);
 				} else {
 					ServeUnitResponse serveUnitResponse = new ServeUnitResponse();
-					CommonUtills.addDefaultUpdateInfos(aUnit, aUnit.getClass(), (GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+					CommonUtills.addDefaultUpdateInfos(aUnit, aUnit.getClass(), RequestScope.globalInfo());
 					aUnit.setActiveStatus(1);
 					serveUnitService.createUnit(aUnit);
 					serveUnitResponse.setActiveStatus(1);
@@ -124,7 +126,7 @@ public class ServeUnitController {
 	@PostMapping("/createUnit")
 	public ResponseEntity<Object> createUnit(@RequestBody Unit unit, HttpSession httpSession) {
 		CommonUtills.addDefaultCreateInfos(unit, unit.getClass(),
-				(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ));
+				RequestScope.globalInfo());
 		Unit aUnit = null;
 		if(unit.getUnit()!= null) {
 			String name = unit.getUnit();
@@ -172,7 +174,7 @@ public class ServeUnitController {
 		aUnit.setUnit(unitFromUI.getUnit());
 		aUnit.setCreatedBy(aUnit.getCreatedBy());
 		aUnit.setCreatedDate(aUnit.getCreatedDate());		
-		CommonUtills.addDefaultUpdateInfos(aUnit,aUnit.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		CommonUtills.addDefaultUpdateInfos(aUnit,aUnit.getClass(),RequestScope.globalInfo());
 		boolean isCreated = serveUnitService.createUnit(aUnit);
 		if (isCreated) {
 			return ResponseEntity.ok().body(serveUnitService.fetchUnitDetails());

@@ -89,6 +89,8 @@ public class BillingServiceImpl implements BillingService {
 	ItemMasterPriceDetailsRepo itemMasterPriceDetailsRepo;
 	@Autowired
 	CustomerInfoRepo customRepo;
+	@Autowired
+	OutletSequenceService outletSequenceService;
 
 	@Override
 	@Transactional
@@ -168,7 +170,7 @@ public class BillingServiceImpl implements BillingService {
 			pay.setPaidMode(confirmBill.getPayMode());
 			CommonUtills.addDefaultCreateInfos(pay, pay.getClass(), globalInfo);
 			paymentRepo.save(pay);
-			pay.setReceiptNumber("BILL"+pay.getPayID()); //to be change
+			pay.setReceiptNumber(outletSequenceService.next(OutletSequenceService.RECEIPT));
 			paymentRepo.save(pay);
 			inv.setReceiptNo(pay.getReceiptNumber());
 			invoiceRepo.save(inv);
@@ -472,7 +474,7 @@ public class BillingServiceImpl implements BillingService {
 			pay.setPaidMode(part.getPayMode());
 			CommonUtills.addDefaultCreateInfos(pay, pay.getClass(), globalInfo);
 			paymentRepo.save(pay);
-			pay.setReceiptNumber("PAY" + pay.getPayID());
+			pay.setReceiptNumber(outletSequenceService.next(OutletSequenceService.PAYMENT));
 			paymentRepo.save(pay);
 		}
 		inv.setPaidAmount(round2(inv.getPaidAmount() + amount));

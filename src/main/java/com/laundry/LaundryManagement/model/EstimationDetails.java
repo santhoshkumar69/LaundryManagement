@@ -3,6 +3,11 @@
  */
 package com.laundry.LaundryManagement.model;
 
+import org.hibernate.annotations.Filter;
+import jakarta.persistence.EntityListeners;
+import com.laundry.LaundryManagement.auth.ScopeFilters;
+import com.laundry.LaundryManagement.auth.ScopeStampingListener;
+
 import java.io.Serializable;
 import java.util.Date;
 import jakarta.persistence.Column;
@@ -22,6 +27,9 @@ import lombok.Data;
 @Entity
 @Table(name = "TB_ESTIMATION_DETAILS")
 @Data
+@Filter(name = ScopeFilters.TENANT)
+@Filter(name = ScopeFilters.OUTLET)
+@EntityListeners(ScopeStampingListener.class)
 public class EstimationDetails implements Serializable {
 
 	/**

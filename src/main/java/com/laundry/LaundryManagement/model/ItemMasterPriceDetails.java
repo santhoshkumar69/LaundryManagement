@@ -1,5 +1,10 @@
 package com.laundry.LaundryManagement.model;
 
+import org.hibernate.annotations.Filter;
+import jakarta.persistence.EntityListeners;
+import com.laundry.LaundryManagement.auth.ScopeFilters;
+import com.laundry.LaundryManagement.auth.ScopeStampingListener;
+
 import java.io.Serializable;
 
 import jakarta.persistence.Column;
@@ -14,6 +19,9 @@ import lombok.Data;
 @Entity
 @Data
 @Table(name = "TB_LA_ITEM_MASTER_PRICE_DETAILS")
+@Filter(name = ScopeFilters.TENANT)
+@Filter(name = ScopeFilters.OUTLET)
+@EntityListeners(ScopeStampingListener.class)
 public class ItemMasterPriceDetails implements Serializable {
 	
 	private static final long serialVersionUID = 1L;
@@ -22,6 +30,9 @@ public class ItemMasterPriceDetails implements Serializable {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "ID")
 	private Integer ID;
+
+	@Column(name = "LOCATION_ID")
+	private String locationID;
 	
 	@Column(name = "WASHING_TYPE_ID")
 	private int washingTypeId;

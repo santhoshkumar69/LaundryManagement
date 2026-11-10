@@ -10,11 +10,21 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
+
+import com.laundry.LaundryManagement.auth.ScopeFilters;
+
 import lombok.Data;
 
 @Entity
 @Data
 @Table(name = "TB_LA_TENENT_DETAILS")
+// Declared here once for the whole model; entities opt in with @Filter.
+@FilterDef(name = ScopeFilters.TENANT, defaultCondition = ScopeFilters.TENANT_CONDITION, autoEnabled = true, applyToLoadByKey = true,
+		parameters = @ParamDef(name = "tenantId", type = Integer.class, resolver = ScopeFilters.TenantIdResolver.class))
+@FilterDef(name = ScopeFilters.OUTLET, defaultCondition = ScopeFilters.OUTLET_CONDITION, autoEnabled = true, applyToLoadByKey = true,
+		parameters = @ParamDef(name = "outletId", type = String.class, resolver = ScopeFilters.OutletIdResolver.class))
 public class TenantDetails implements Serializable{
 
 	private static final long serialVersionUID = 1L;

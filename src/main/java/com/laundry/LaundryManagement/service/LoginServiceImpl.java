@@ -1,5 +1,7 @@
 package com.laundry.LaundryManagement.service;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
+
 import com.laundry.LaundryManagement.common.CommonUtills;
 import com.laundry.LaundryManagement.dto.ChangePasswordRequest;
 import com.laundry.LaundryManagement.model.GlobalInfo;
@@ -18,11 +20,6 @@ public class LoginServiceImpl implements LoginService {
 	@Autowired
 	UserInfoRepository userInfoRepo;
 	
-	public UserInfo validateLoginCredentials(UserInfo userinfo) {
-		UserInfo userInfo = this.userInfoRepo.findByLaundryUserId(userinfo.getUserId(), userinfo.getPassword());
-		return userInfo;
-	}
-
 	@Override
 	@Transactional
 	public void changePassword(ChangePasswordRequest request, GlobalInfo globalInfo) {
@@ -37,7 +34,11 @@ public class LoginServiceImpl implements LoginService {
 		if (request.getNewPassword().equals(request.getCurrentPassword())) {
 			throw new IllegalArgumentException("New password must be different from the current password");
 		}
-		UserInfo user = userInfoRepo.findByLaundryUserId(request.getUserId(), request.getCurrentPassword());
+		RequestScope.Scope scope = RequestScope.require();
+		if (!request.getUserId().equals(scope.loginId())) {
+			throw new IllegalArgumentException("You can only change your own password");
+		}
+		UserInfo user = userInfoRepo.findForLogin(scope.tenantId(), request.getUserId(), request.getCurrentPassword());
 		if (user == null) {
 			throw new IllegalArgumentException("Current password is incorrect");
 		}

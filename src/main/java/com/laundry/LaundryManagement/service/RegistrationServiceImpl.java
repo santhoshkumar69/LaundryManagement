@@ -17,10 +17,13 @@ import com.laundry.LaundryManagement.dto.RegistrationRequest;
 import com.laundry.LaundryManagement.dto.RegistrationResult;
 import com.laundry.LaundryManagement.model.OutletDetails;
 import com.laundry.LaundryManagement.model.TenantDetails;
+import com.laundry.LaundryManagement.auth.RequestScope;
+import com.laundry.LaundryManagement.model.RoleDetails;
 import com.laundry.LaundryManagement.model.UserInfo;
 import com.laundry.LaundryManagement.repository.OutletDetailsRepo;
 import com.laundry.LaundryManagement.repository.TenantDetailsRepo;
 import com.laundry.LaundryManagement.repository.UserInfoRepository;
+import com.laundry.LaundryManagement.repository.UserRoleRepo;
 
 @Service
 public class RegistrationServiceImpl implements RegistrationService {
@@ -28,6 +31,7 @@ public class RegistrationServiceImpl implements RegistrationService {
 	private static final int MIN_PASSWORD_LENGTH = 6;
 	private static final int TENANT_CODE_BASE = 1000;
 	private static final String ADMIN_ROLE = "admin";
+	private static final List<String> DEFAULT_ROLES = List.of("Admin", "Staff");
 
 	private static final List<String> SUBSCRIPTIONS = List.of("YEARLY", "MONTHLY", "OFFLINE");
 	private static final List<String> CUSTOMER_TYPES = List.of("PARTNER", "DIRECT");
@@ -48,11 +52,19 @@ public class RegistrationServiceImpl implements RegistrationService {
 	@Autowired
 	private UserInfoRepository userInfoRepository;
 
+	@Autowired
+	private UserRoleRepo userRoleRepo;
+
 	// ---- Registration ----
 
 	@Override
 	@Transactional
 	public RegistrationResult register(RegistrationRequest request) {
+		// Nobody is signed in during sign-up, so lookups must see across tenants.
+		return RequestScope.asSystem(() -> registerAcrossTenants(request));
+	}
+
+	private RegistrationResult registerAcrossTenants(RegistrationRequest request) {
 		if (request == null) {
 			throw new IllegalArgumentException("Registration details are required");
 		}
@@ -60,6 +72,9 @@ public class RegistrationServiceImpl implements RegistrationService {
 		validateLogin(request);
 
 		TenantDetails tenant = request.isExistingCustomer() ? verifiedExistingTenant(request) : createTenant(request);
+		if (userInfoRepository.findByTenantAndUserId(tenant.getId(), request.getLoginId()) != null) {
+			throw new IllegalArgumentException("Login ID " + request.getLoginId() + " is already taken in this company; choose another");
+		}
 
 		long outletCount = outletDetailsRepo.countByTenantId(tenant.getId());
 		OutletDetails outlet = new OutletDetails();
@@ -138,7 +153,17 @@ public class RegistrationServiceImpl implements RegistrationService {
 		tenant.setCreatedDate(new Date());
 		tenant = tenantDetailsRepo.save(tenant);
 		tenant.setTenantCode("T" + (TENANT_CODE_BASE + tenant.getId()));
-		return tenantDetailsRepo.save(tenant);
+		tenant = tenantDetailsRepo.save(tenant);
+		for (String roleName : DEFAULT_ROLES) {
+			RoleDetails role = new RoleDetails();
+			role.setUserRole(roleName);
+			role.setActiveStatus(1);
+			role.setTenantId(tenant.getId());
+			role.setCreatedBy("registration");
+			role.setCreatedDate(new Date());
+			userRoleRepo.save(role);
+		}
+		return tenant;
 	}
 
 	private TenantDetails verifiedExistingTenant(RegistrationRequest request) {
@@ -150,9 +175,8 @@ public class RegistrationServiceImpl implements RegistrationService {
 		if (request.getVerifyUserId() == null || isBlank(request.getVerifyPassword())) {
 			throw new IllegalArgumentException("Enter the login ID and password of an existing admin of this company");
 		}
-		UserInfo verifier = userInfoRepository.findByLaundryUserId(request.getVerifyUserId(), request.getVerifyPassword());
-		if (verifier == null || verifier.getTenantId() != tenant.getId() || verifier.getActiveStatus() != 1
-				|| !ADMIN_ROLE.equalsIgnoreCase(verifier.getRole())) {
+		UserInfo verifier = userInfoRepository.findForLogin(tenant.getId(), request.getVerifyUserId(), request.getVerifyPassword());
+		if (verifier == null || !ADMIN_ROLE.equalsIgnoreCase(verifier.getRole())) {
 			throw new IllegalArgumentException("That admin login does not belong to tenant " + tenant.getTenantCode());
 		}
 		return tenant;
@@ -174,9 +198,6 @@ public class RegistrationServiceImpl implements RegistrationService {
 	private void validateLogin(RegistrationRequest request) {
 		if (request.getLoginId() == null || request.getLoginId() <= 0) {
 			throw new IllegalArgumentException("Login ID must be a positive number");
-		}
-		if (userInfoRepository.findByUserId(request.getLoginId()) != null) {
-			throw new IllegalArgumentException("Login ID " + request.getLoginId() + " is already taken; choose another");
 		}
 		if (request.getPassword() == null || request.getPassword().length() < MIN_PASSWORD_LENGTH) {
 			throw new IllegalArgumentException("Password must be at least " + MIN_PASSWORD_LENGTH + " characters");
@@ -313,19 +334,17 @@ public class RegistrationServiceImpl implements RegistrationService {
 
 	// ---- Lookups ----
 
-	private UserInfo activeUser(Long userId) {
-		if (userId == null) {
-			throw new IllegalArgumentException("User ID is required");
-		}
-		UserInfo user = userInfoRepository.findByUserId(userId);
+	/** The signed-in user; the userId sent by older clients is ignored in favour of the session. */
+	private UserInfo activeUser(Long ignoredUserId) {
+		UserInfo user = userInfoRepository.findById(RequestScope.require().userDbId()).orElse(null);
 		if (user == null || user.getActiveStatus() != 1) {
-			throw new IllegalArgumentException("User " + userId + " was not found");
+			throw new IllegalArgumentException("Your login is no longer active");
 		}
 		return user;
 	}
 
-	private UserInfo adminUser(Long userId) {
-		UserInfo user = activeUser(userId);
+	private UserInfo adminUser(Long ignoredUserId) {
+		UserInfo user = activeUser(ignoredUserId);
 		if (!ADMIN_ROLE.equalsIgnoreCase(user.getRole())) {
 			throw new IllegalArgumentException("Only an admin can change these settings");
 		}
@@ -333,26 +352,14 @@ public class RegistrationServiceImpl implements RegistrationService {
 	}
 
 	private TenantDetails tenantOf(UserInfo user) {
-		return tenantDetailsRepo.findById(user.getTenantId())
+		return tenantDetailsRepo.findById(RequestScope.requireTenantId())
 				.orElseThrow(() -> new IllegalArgumentException("Your login is not linked to a registered company"));
 	}
 
+	/** The outlet chosen for this session. */
 	private OutletDetails outletOf(UserInfo user) {
-		Integer outletId = null;
-		try {
-			outletId = user.getLocationID() == null ? null : Integer.valueOf(user.getLocationID().trim());
-		} catch (NumberFormatException ex) {
-			// Older logins store a location label instead of an outlet ID.
-		}
-		if (outletId == null) {
-			throw new IllegalArgumentException("Your login is not linked to an outlet");
-		}
-		OutletDetails outlet = outletDetailsRepo.findById(outletId)
-				.orElseThrow(() -> new IllegalArgumentException("Your login is not linked to an outlet"));
-		if (outlet.getTenantId() != user.getTenantId()) {
-			throw new IllegalArgumentException("Your login is not linked to an outlet of your company");
-		}
-		return outlet;
+		return outletDetailsRepo.findById(RequestScope.requireOutletId())
+				.orElseThrow(() -> new IllegalArgumentException("Choose an outlet first"));
 	}
 
 	// ---- Validation helpers ----

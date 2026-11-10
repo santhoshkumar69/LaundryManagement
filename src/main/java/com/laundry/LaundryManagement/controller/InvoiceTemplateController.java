@@ -1,5 +1,7 @@
 package com.laundry.LaundryManagement.controller;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
+
 import jakarta.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,7 +83,7 @@ public class InvoiceTemplateController {
 	}
 
 	private GlobalInfo globalInfo(HttpSession httpSession) {
-		return (GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ);
+		return RequestScope.globalInfo();
 	}
 
 	private ResponseEntity<Object> error(String message) {

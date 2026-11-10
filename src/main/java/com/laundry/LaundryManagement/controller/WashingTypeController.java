@@ -1,5 +1,7 @@
 package com.laundry.LaundryManagement.controller;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -37,7 +39,7 @@ public class WashingTypeController {
 	@PostMapping("/createWashingType")
 	public ResponseEntity<Object> createWashingType(@RequestBody WashingType washingType, HttpSession httpSession)
 	{
-		CommonUtills.addDefaultCreateInfos(washingType, washingType.getClass(), (GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+		CommonUtills.addDefaultCreateInfos(washingType, washingType.getClass(), RequestScope.globalInfo());
 		WashingType aWashingType = null;
          
          if(washingType.getProcessTypeName() == null)
@@ -102,7 +104,7 @@ public class WashingTypeController {
 					  theWashingTypeResponse.add(washingTypeResponse);
 				  } else {
 					  WashingTypeResponse washingTypeResponse = new WashingTypeResponse();
-					  CommonUtills.addDefaultUpdateInfos(aWashingType, aWashingType.getClass(), (GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+					  CommonUtills.addDefaultUpdateInfos(aWashingType, aWashingType.getClass(), RequestScope.globalInfo());
 					  aWashingType.setActiveStatus(0);
 					  washingTypeService.createWashingType(aWashingType);
 					  
@@ -143,7 +145,7 @@ public class WashingTypeController {
 					  theWashingTypeResponse.add(washingTypeResponse);
 				 } else {
 					 WashingTypeResponse washingTypeResponse = new WashingTypeResponse();
-					  CommonUtills.addDefaultUpdateInfos(aWashingType, aWashingType.getClass(), (GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+					  CommonUtills.addDefaultUpdateInfos(aWashingType, aWashingType.getClass(), RequestScope.globalInfo());
 					  aWashingType.setActiveStatus(1);
 					  washingTypeService.createWashingType(aWashingType);
 					  
@@ -188,7 +190,7 @@ public class WashingTypeController {
 				setWashingType.setUpdatedDate(setWashingType.getUpdatedDate());
 	
 				CommonUtills.addDefaultUpdateInfos(setWashingType, setWashingType.getClass(),
-						(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ));
+						RequestScope.globalInfo());
 				boolean isCreated = washingTypeService.createWashingType(setWashingType);
 				if (isCreated) {
 					return ResponseEntity.ok().body(washingTypeService.findAllWashingTYpe());

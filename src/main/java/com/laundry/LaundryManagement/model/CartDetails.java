@@ -1,5 +1,10 @@
 package com.laundry.LaundryManagement.model;
 
+import org.hibernate.annotations.Filter;
+import jakarta.persistence.EntityListeners;
+import com.laundry.LaundryManagement.auth.ScopeFilters;
+import com.laundry.LaundryManagement.auth.ScopeStampingListener;
+
 import java.io.Serializable;
 
 import jakarta.persistence.Column;
@@ -17,6 +22,9 @@ import lombok.Data;
 @Entity
 @Table(name="TB_CART_DETAILS")
 @Data
+@Filter(name = ScopeFilters.TENANT)
+@Filter(name = ScopeFilters.OUTLET)
+@EntityListeners(ScopeStampingListener.class)
 public class CartDetails extends BaseEntity implements Serializable {
 
 	private static final long serialVersionUID = 1L;
@@ -25,6 +33,9 @@ public class CartDetails extends BaseEntity implements Serializable {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "ID")
 	private int Id;
+
+	@Column(name = "LOCATION_ID")
+	private String locationID;
 	
 	@ManyToOne
 	@JoinColumn(name = "billing_details_id")

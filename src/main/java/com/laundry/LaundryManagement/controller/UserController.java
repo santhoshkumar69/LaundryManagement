@@ -1,5 +1,7 @@
 package com.laundry.LaundryManagement.controller;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
+
 import java.util.Optional;
 
 import jakarta.servlet.http.HttpSession;
@@ -34,7 +36,7 @@ public class UserController {
 	    
 		@PostMapping("/createUserInfo")
 		public ResponseEntity<Object> createUserInfoDetails(@RequestBody UserInfo userInfo, HttpSession httpSession){
-			CommonUtills.addDefaultCreateInfos(userInfo,userInfo.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+			CommonUtills.addDefaultCreateInfos(userInfo,userInfo.getClass(),RequestScope.globalInfo());
 	        UserInfo aUserInfo = null;
 			if(userInfo.getUserId() != null) {
 				Long userId =  userInfo.getUserId();
@@ -102,7 +104,7 @@ public class UserController {
 			setrow.setCreatedDate(setrow.getCreatedDate());
 		
 
-			CommonUtills.addDefaultUpdateInfos(setrow, setrow.getClass(),(GlobalInfo) httpSession.getAttribute(AppConstants.SESSION_OBJ));
+			CommonUtills.addDefaultUpdateInfos(setrow, setrow.getClass(),RequestScope.globalInfo());
 			boolean isCreated = userInfoService.createUserInfo(setrow);
 			if (isCreated) {
 				return ResponseEntity.ok().body(userInfoService.fetchUserInfoDetails());
@@ -121,7 +123,7 @@ public class UserController {
 			if(aUserInfo.getActiveStatus() == 0) {
 				return ResponseEntity.status(500).body(new ReturnResponse(AppStatus.ID_ALREADY_DEACTIVATED,AppStatusCode.INTERNAL_ERROR));
 			}
-			CommonUtills.addDefaultUpdateInfos(aUserInfo,aUserInfo.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+			CommonUtills.addDefaultUpdateInfos(aUserInfo,aUserInfo.getClass(),RequestScope.globalInfo());
 			aUserInfo.setActiveStatus(0);
 			userInfoService.createUserInfo(aUserInfo);
 			//userInfoService.deactivateUserInfo(userId);
@@ -139,7 +141,7 @@ public class UserController {
 				return ResponseEntity.status(500).body(new ReturnResponse(AppStatus.ID_ALREADY_DEACTIVATED,AppStatusCode.INTERNAL_ERROR));
 				
 			}		
-			CommonUtills.addDefaultUpdateInfos(aUserInfo,aUserInfo.getClass(),(GlobalInfo)httpSession.getAttribute(AppConstants.SESSION_OBJ));
+			CommonUtills.addDefaultUpdateInfos(aUserInfo,aUserInfo.getClass(),RequestScope.globalInfo());
 			aUserInfo.setActiveStatus(1);
 			userInfoService.createUserInfo(aUserInfo);
 			return ResponseEntity.ok().body(new ReturnResponse(AppStatus.ACTIVATED_SUCCESSFULLY, AppStatusCode.OK));
