@@ -24,6 +24,8 @@ public class AuthFilter extends OncePerRequestFilter {
 
 	private static final List<String> PUBLIC_PATHS = List.of("/auth/login", "/registration/", "/error");
 	private static final List<String> NO_OUTLET_PATHS = List.of("/auth/outlets", "/auth/selectOutlet", "/auth/me");
+	private static final List<String> ADMIN_PATHS = List.of("/admin/", "/userInfo/", "/userRole/",
+			"/companyProfile/update", "/outletSettings/update");
 	private static final List<String> ALLOWED_ORIGINS = List.of("http://localhost:4200");
 
 	private final AuthTokenService tokens;
@@ -45,11 +47,15 @@ public class AuthFilter extends OncePerRequestFilter {
 				? tokens.verify(header.substring(7).trim())
 				: null;
 		if (scope == null) {
-			reject(request, response, "Your session has expired. Please sign in again.");
+			reject(request, response, HttpServletResponse.SC_UNAUTHORIZED, "Your session has expired. Please sign in again.");
 			return;
 		}
 		if (scope.outletId() == null && !startsWithAny(path, NO_OUTLET_PATHS)) {
-			reject(request, response, "Choose an outlet first.");
+			reject(request, response, HttpServletResponse.SC_UNAUTHORIZED, "Choose an outlet first.");
+			return;
+		}
+		if (!scope.isAdmin() && startsWithAny(path, ADMIN_PATHS)) {
+			reject(request, response, HttpServletResponse.SC_FORBIDDEN, "Only an admin can do this.");
 			return;
 		}
 		RequestScope.set(scope);
@@ -64,16 +70,16 @@ public class AuthFilter extends OncePerRequestFilter {
 		return prefixes.stream().anyMatch(path::startsWith);
 	}
 
-	/** 401 with CORS headers, so the browser lets the app see the status and send the user to login. */
-	private static void reject(HttpServletRequest request, HttpServletResponse response, String message)
+	/** Error with CORS headers, so the browser lets the app see the status (401 sends the user to login). */
+	private static void reject(HttpServletRequest request, HttpServletResponse response, int status, String message)
 			throws IOException {
 		String origin = request.getHeader("Origin");
 		if (origin != null && ALLOWED_ORIGINS.contains(origin)) {
 			response.setHeader("Access-Control-Allow-Origin", origin);
 			response.setHeader("Vary", "Origin");
 		}
-		response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+		response.setStatus(status);
 		response.setContentType("application/json");
-		response.getWriter().write("{\"message\":\"" + message.replace("\"", "'") + "\",\"statusCode\":401}");
+		response.getWriter().write("{\"message\":\"" + message.replace("\"", "'") + "\",\"statusCode\":" + status + "}");
 	}
 }

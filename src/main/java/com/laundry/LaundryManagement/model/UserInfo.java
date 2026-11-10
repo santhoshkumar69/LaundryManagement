@@ -16,6 +16,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.Data;
 
 @Entity
@@ -44,6 +46,7 @@ public class UserInfo implements Serializable{
 	private Long userId;
 	
 	@Column(name = "PASSWORD",  nullable = false)
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String password;
 	
 	@Column(name = "ROLE",  nullable = false)
