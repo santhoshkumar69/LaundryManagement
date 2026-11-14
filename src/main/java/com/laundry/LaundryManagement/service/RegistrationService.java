@@ -14,7 +14,7 @@ public interface RegistrationService {
 
 	CompanyProfileDto updateCompanyProfile(CompanyProfileDto profile);
 
-	OutletSettingsDto getOutletSettings(String userId);
+	OutletSettingsDto getOutletSettings(String userId, Integer outletId);
 
 	OutletSettingsDto updateOutletSettings(OutletSettingsDto settings);
 }

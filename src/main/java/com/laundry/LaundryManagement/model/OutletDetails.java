@@ -103,6 +103,10 @@ public class OutletDetails implements Serializable {
 	@Column(name = "UPDATED_DATE")
 	private Date updatedDate;
 
+	/** 1 = in use; 0 = deleted by an admin, which hides the outlet but keeps its data so it can be restored. */
+	@Column(name = "ACTIVE_STATUS", nullable = false)
+	private Integer activeStatus = 1;
+
 	public String getOutletName() {
 		return outletName;
 	}

@@ -4,8 +4,11 @@ import lombok.Data;
 
 @Data
 public class OutletSettingsDto {
-	/** Logged-in user; the settings shown and saved are for that user's outlet. */
+	/** Logged-in user. */
 	private String userId;
+
+	/** Outlet to show or save; the outlet chosen for the session when empty. */
+	private Integer outletId;
 
 	private String outletCode;
 	private String outletName;

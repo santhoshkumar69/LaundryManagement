@@ -120,7 +120,7 @@ public class AuthService {
 
 	/** Admins: every outlet of the tenant. Others: assigned outlets, or their home outlet if none are assigned. */
 	List<OutletOption> allowedOutlets(UserInfo user) {
-		List<OutletDetails> tenantOutlets = outletRepo.findByTenantIdOrderByIdAsc(user.getTenantId());
+		List<OutletDetails> tenantOutlets = outletRepo.findActiveByTenantId(user.getTenantId());
 		if ("admin".equalsIgnoreCase(user.getRole())) {
 			return tenantOutlets.stream().map(OutletOption::of).collect(Collectors.toList());
 		}

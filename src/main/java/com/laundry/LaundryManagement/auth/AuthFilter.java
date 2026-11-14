@@ -29,9 +29,11 @@ public class AuthFilter extends OncePerRequestFilter {
 	private static final List<String> ALLOWED_ORIGINS = List.of("http://localhost:4200");
 
 	private final AuthTokenService tokens;
+	private final DeletedOutlets deletedOutlets;
 
-	public AuthFilter(AuthTokenService tokens) {
+	public AuthFilter(AuthTokenService tokens, DeletedOutlets deletedOutlets) {
 		this.tokens = tokens;
+		this.deletedOutlets = deletedOutlets;
 	}
 
 	@Override
@@ -52,6 +54,11 @@ public class AuthFilter extends OncePerRequestFilter {
 		}
 		if (scope.outletId() == null && !startsWithAny(path, NO_OUTLET_PATHS)) {
 			reject(request, response, HttpServletResponse.SC_UNAUTHORIZED, "Choose an outlet first.");
+			return;
+		}
+		if (deletedOutlets.contains(scope.outletId())) {
+			reject(request, response, HttpServletResponse.SC_UNAUTHORIZED,
+					"This outlet has been deleted. Please sign in again and choose another outlet.");
 			return;
 		}
 		if (!scope.isAdmin() && startsWithAny(path, ADMIN_PATHS)) {

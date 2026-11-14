@@ -7,6 +7,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,9 +21,12 @@ import com.laundry.LaundryManagement.model.ItemMasterPriceDetails;
 import com.laundry.LaundryManagement.model.OutletDetails;
 import com.laundry.LaundryManagement.model.TenantDetails;
 import com.laundry.LaundryManagement.model.Unit;
+import com.laundry.LaundryManagement.model.UserInfo;
+import com.laundry.LaundryManagement.model.UserOutlet;
 import com.laundry.LaundryManagement.model.WashingType;
 import com.laundry.LaundryManagement.repository.OutletDetailsRepo;
 import com.laundry.LaundryManagement.repository.TenantDetailsRepo;
+import com.laundry.LaundryManagement.repository.UserOutletRepo;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Id;
@@ -31,10 +36,11 @@ import jakarta.persistence.PersistenceContext;
 @Service
 public class OutletAdminService {
 
-	public record OutletSummary(Integer id, String outletCode, String outletName, String city, String currency) {
+	public record OutletSummary(Integer id, String outletCode, String outletName, String city, String currency,
+			String mobileNo, String emailId, boolean active) {
 		static OutletSummary of(OutletDetails outlet) {
 			return new OutletSummary(outlet.getId(), outlet.getOutletCode(), outlet.getOutletName(), outlet.getCity(),
-					outlet.getCurrency());
+					outlet.getCurrency(), outlet.getMobileNo(), outlet.getEmailId(), outlet.getActiveStatus() == 1);
 		}
 	}
 
@@ -54,13 +60,84 @@ public class OutletAdminService {
 	@Autowired
 	private TenantDetailsRepo tenantRepo;
 
+	@Autowired
+	private UserOutletRepo userOutletRepo;
+
 	@PersistenceContext
 	private EntityManager em;
 
-	public List<OutletSummary> list() {
+	public List<OutletSummary> list(boolean includeDeleted) {
 		requireAdmin();
-		return outletRepo.findByTenantIdOrderByIdAsc(RequestScope.requireTenantId()).stream().map(OutletSummary::of)
-				.toList();
+		int tenantId = RequestScope.requireTenantId();
+		List<OutletDetails> outlets = includeDeleted ? outletRepo.findByTenantIdOrderByIdAsc(tenantId)
+				: outletRepo.findActiveByTenantId(tenantId);
+		return outlets.stream().map(OutletSummary::of).toList();
+	}
+
+	/** Hides the outlet everywhere; its bills, items and history stay in the database. */
+	@Transactional
+	public OutletSummary delete(int outletId) {
+		RequestScope.Scope scope = requireAdmin();
+		OutletDetails outlet = outletRepo.findById(outletId)
+				.orElseThrow(() -> new IllegalArgumentException("Outlet not found"));
+		if (outlet.getActiveStatus() != 1) {
+			throw new IllegalArgumentException(outlet.getOutletName() + " is already deleted");
+		}
+		if (outlet.getId().equals(scope.outletId())) {
+			throw new IllegalArgumentException("You are signed in to " + outlet.getOutletName()
+					+ ". Switch to another outlet before deleting it.");
+		}
+		Set<Integer> activeOutletIds = outletRepo.findActiveByTenantId(scope.tenantId()).stream()
+				.map(OutletDetails::getId).collect(Collectors.toSet());
+		if (activeOutletIds.size() <= 1) {
+			throw new IllegalArgumentException("A company needs at least one outlet");
+		}
+		List<String> stranded = staffWhoseOnlyOutletIs(outletId, activeOutletIds);
+		if (!stranded.isEmpty()) {
+			throw new IllegalArgumentException(outlet.getOutletName() + " is the only outlet of "
+					+ String.join(", ", stranded)
+					+ ". Assign them to another outlet in Settings > Manage User, then delete it.");
+		}
+		outlet.setActiveStatus(0);
+		outlet.setUpdatedBy(scope.userName());
+		outlet.setUpdatedDate(new Date());
+		return OutletSummary.of(outletRepo.save(outlet));
+	}
+
+	@Transactional
+	public OutletSummary restore(int outletId) {
+		RequestScope.Scope scope = requireAdmin();
+		OutletDetails outlet = outletRepo.findById(outletId)
+				.orElseThrow(() -> new IllegalArgumentException("Outlet not found"));
+		if (outlet.getActiveStatus() == 1) {
+			throw new IllegalArgumentException(outlet.getOutletName() + " is not deleted");
+		}
+		outlet.setActiveStatus(1);
+		outlet.setUpdatedBy(scope.userName());
+		outlet.setUpdatedDate(new Date());
+		return OutletSummary.of(outletRepo.save(outlet));
+	}
+
+	/** Names of active non-admin users who could open no other active outlet once this one is gone. */
+	private List<String> staffWhoseOnlyOutletIs(int outletId, Set<Integer> activeOutletIds) {
+		Map<Integer, List<Integer>> assigned = userOutletRepo.findAll().stream().collect(Collectors
+				.groupingBy(UserOutlet::getUserDbId, Collectors.mapping(UserOutlet::getOutletId, Collectors.toList())));
+		List<String> stranded = new ArrayList<>();
+		for (UserInfo user : em.createQuery("from UserInfo u where u.activeStatus = 1 order by u.userName", UserInfo.class)
+				.getResultList()) {
+			if ("admin".equalsIgnoreCase(user.getRole())) {
+				continue;
+			}
+			List<Integer> outlets = assigned.getOrDefault(user.getId(), List.of());
+			if (outlets.isEmpty() && user.getLocationID() != null && user.getLocationID().matches("\\d+")) {
+				outlets = List.of(Integer.valueOf(user.getLocationID()));
+			}
+			Set<Integer> usable = outlets.stream().filter(activeOutletIds::contains).collect(Collectors.toSet());
+			if (usable.equals(Set.of(outletId))) {
+				stranded.add(user.getUserName() + " (" + user.getUserId() + ")");
+			}
+		}
+		return stranded;
 	}
 
 	@Transactional
@@ -213,10 +290,12 @@ public class OutletAdminService {
 		}
 	}
 
-	private static void requireAdmin() {
-		if (!RequestScope.require().isAdmin()) {
+	private static RequestScope.Scope requireAdmin() {
+		RequestScope.Scope scope = RequestScope.require();
+		if (!scope.isAdmin()) {
 			throw new IllegalArgumentException("Only an admin can manage outlets and users");
 		}
+		return scope;
 	}
 
 	private static String trimToNull(String value) {

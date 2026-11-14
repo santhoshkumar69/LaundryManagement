@@ -54,8 +54,11 @@ public class UserAdminService {
 	private EntityManager em;
 
 	public List<UserSummary> list() {
-		requireAdmin();
+		RequestScope.Scope scope = requireAdmin();
+		Set<Integer> activeOutletIds = outletRepo.findActiveByTenantId(scope.tenantId()).stream()
+				.map(OutletDetails::getId).collect(Collectors.toSet());
 		Map<Integer, List<Integer>> outletsByUser = userOutletRepo.findAll().stream()
+				.filter(link -> activeOutletIds.contains(link.getOutletId()))
 				.collect(Collectors.groupingBy(UserOutlet::getUserDbId,
 						Collectors.mapping(UserOutlet::getOutletId, Collectors.toList())));
 		return em.createQuery("from UserInfo u order by u.userName", UserInfo.class).getResultList().stream()
@@ -82,7 +85,7 @@ public class UserAdminService {
 				.findFirst().orElseThrow(() -> new IllegalArgumentException("Choose one of the roles: " + String.join(", ", roles())));
 		boolean admin = "admin".equalsIgnoreCase(role);
 
-		Set<Integer> tenantOutletIds = outletRepo.findByTenantIdOrderByIdAsc(scope.tenantId()).stream()
+		Set<Integer> tenantOutletIds = outletRepo.findActiveByTenantId(scope.tenantId()).stream()
 				.map(OutletDetails::getId).collect(Collectors.toSet());
 		List<Integer> outletIds = request.outletIds() == null ? List.of()
 				: request.outletIds().stream().distinct().toList();

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.laundry.LaundryManagement.auth.DeletedOutlets;
 import com.laundry.LaundryManagement.dto.ReturnResponse;
 import com.laundry.LaundryManagement.service.OutletAdminService;
 import com.laundry.LaundryManagement.service.UserAdminService;
@@ -27,14 +28,32 @@ public class TenantAdminController {
 	@Autowired
 	private UserAdminService userAdminService;
 
+	@Autowired
+	private DeletedOutlets deletedOutlets;
+
 	@GetMapping("/outlets")
-	public ResponseEntity<Object> outlets() {
-		return ResponseEntity.ok(outletAdminService.list());
+	public ResponseEntity<Object> outlets(
+			@RequestParam(value = "includeDeleted", defaultValue = "false") boolean includeDeleted) {
+		return ResponseEntity.ok(outletAdminService.list(includeDeleted));
 	}
 
 	@PostMapping("/outlets")
 	public ResponseEntity<Object> createOutlet(@RequestBody OutletAdminService.CreateOutletRequest request) {
 		return ResponseEntity.ok(outletAdminService.create(request));
+	}
+
+	@PostMapping("/outlets/delete")
+	public ResponseEntity<Object> deleteOutlet(@RequestParam("id") Integer id) {
+		OutletAdminService.OutletSummary deleted = outletAdminService.delete(id);
+		deletedOutlets.refresh();
+		return ResponseEntity.ok(deleted);
+	}
+
+	@PostMapping("/outlets/restore")
+	public ResponseEntity<Object> restoreOutlet(@RequestParam("id") Integer id) {
+		OutletAdminService.OutletSummary restored = outletAdminService.restore(id);
+		deletedOutlets.refresh();
+		return ResponseEntity.ok(restored);
 	}
 
 	@GetMapping("/users")

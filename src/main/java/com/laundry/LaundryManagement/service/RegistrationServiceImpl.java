@@ -249,10 +249,15 @@ public class RegistrationServiceImpl implements RegistrationService {
 	// ---- Outlet settings ----
 
 	@Override
-	public OutletSettingsDto getOutletSettings(String userId) {
-		OutletDetails outlet = outletOf(activeUser(userId));
+	public OutletSettingsDto getOutletSettings(String userId, Integer outletId) {
+		UserInfo user = activeUser(userId);
+		if (outletId != null && !outletId.equals(RequestScope.requireOutletId())) {
+			adminUser(userId);
+		}
+		OutletDetails outlet = outletOf(outletId);
 		OutletSettingsDto settings = new OutletSettingsDto();
-		settings.setUserId(userId);
+		settings.setUserId(user.getUserId());
+		settings.setOutletId(outlet.getId());
 		settings.setOutletCode(outlet.getOutletCode());
 		settings.setOutletName(outlet.getOutletName());
 		settings.setDateFormat(outlet.getDateFormat());
@@ -282,8 +287,13 @@ public class RegistrationServiceImpl implements RegistrationService {
 			throw new IllegalArgumentException("Outlet settings are required");
 		}
 		UserInfo user = adminUser(settings.getUserId());
-		OutletDetails outlet = outletOf(user);
+		OutletDetails outlet = outletOf(settings.getOutletId());
 		require(settings.getOutletName(), "Outlet name");
+		String outletName = settings.getOutletName().trim();
+		if (outletDetailsRepo.findByTenantIdOrderByIdAsc(outlet.getTenantId()).stream()
+				.anyMatch(o -> !o.getId().equals(outlet.getId()) && outletName.equalsIgnoreCase(o.getOutletName()))) {
+			throw new IllegalArgumentException("Another outlet is already named " + outletName);
+		}
 		oneOf(settings.getDateFormat(), DATE_FORMATS, "Date format");
 		oneOf(settings.getTimeFormat(), TIME_FORMATS, "Time format");
 		oneOf(settings.getRoundOff(), ROUND_OFFS, "Round off");
@@ -328,7 +338,7 @@ public class RegistrationServiceImpl implements RegistrationService {
 		outlet.setUpdatedBy(user.getUserName());
 		outlet.setUpdatedDate(new Date());
 		outletDetailsRepo.save(outlet);
-		return getOutletSettings(settings.getUserId());
+		return getOutletSettings(settings.getUserId(), outlet.getId());
 	}
 
 	// ---- Lookups ----
@@ -355,10 +365,14 @@ public class RegistrationServiceImpl implements RegistrationService {
 				.orElseThrow(() -> new IllegalArgumentException("Your login is not linked to a registered company"));
 	}
 
-	/** The outlet chosen for this session. */
-	private OutletDetails outletOf(UserInfo user) {
-		return outletDetailsRepo.findById(RequestScope.requireOutletId())
-				.orElseThrow(() -> new IllegalArgumentException("Choose an outlet first"));
+	/** The given active outlet of the caller's company, or the outlet chosen for this session. */
+	private OutletDetails outletOf(Integer outletId) {
+		OutletDetails outlet = outletDetailsRepo.findById(outletId != null ? outletId : RequestScope.requireOutletId())
+				.orElseThrow(() -> new IllegalArgumentException("Outlet not found"));
+		if (outlet.getActiveStatus() != 1) {
+			throw new IllegalArgumentException(outlet.getOutletName() + " is deleted; restore it before editing");
+		}
+		return outlet;
 	}
 
 	// ---- Validation helpers ----
