@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.laundry.LaundryManagement.auth.RequestScope;
+import com.laundry.LaundryManagement.model.Discounts;
+import com.laundry.LaundryManagement.model.ExtraCharges;
 import com.laundry.LaundryManagement.model.ItemCategory;
 import com.laundry.LaundryManagement.model.ItemMaster;
 import com.laundry.LaundryManagement.model.ItemMasterPriceDetails;
@@ -48,7 +50,8 @@ public class OutletAdminService {
 			String currency, String mobileNo, String emailId, Integer copyFromOutletId) {
 	}
 
-	public record CopySummary(int categories, int units, int laundryTypes, int items, int prices) {
+	public record CopySummary(int categories, int units, int laundryTypes, int items, int prices, int extraCharges,
+			int discounts) {
 	}
 
 	public record CreateOutletResult(OutletSummary outlet, CopySummary copied) {
@@ -185,7 +188,10 @@ public class OutletAdminService {
 		return new CreateOutletResult(OutletSummary.of(outlet), copied);
 	}
 
-	/** Copies active categories, units, laundry types, items and prices, remapping the IDs that link them. */
+	/**
+	 * Copies active categories, units, laundry types, items, prices, extra charges and discounts, remapping the
+	 * IDs that link them.
+	 */
 	private CopySummary copyItemConfiguration(int fromOutletId, int toOutletId) {
 		List<ItemCategory> categories = RequestScope.asOutlet(fromOutletId,
 				() -> em.createQuery("from ItemCategory c where c.activeStatus = 1", ItemCategory.class).getResultList());
@@ -197,6 +203,10 @@ public class OutletAdminService {
 				() -> em.createQuery("from ItemMaster i where i.activeStatus = 1", ItemMaster.class).getResultList());
 		List<ItemMasterPriceDetails> prices = RequestScope.asOutlet(fromOutletId,
 				() -> em.createQuery("from ItemMasterPriceDetails p", ItemMasterPriceDetails.class).getResultList());
+		List<ExtraCharges> extraCharges = RequestScope.asOutlet(fromOutletId,
+				() -> em.createQuery("from ExtraCharges c where c.activeStatus = 1", ExtraCharges.class).getResultList());
+		List<Discounts> discounts = RequestScope.asOutlet(fromOutletId,
+				() -> em.createQuery("from Discounts d where d.activeStatus = 1", Discounts.class).getResultList());
 
 		return RequestScope.asOutlet(toOutletId, () -> {
 			Map<Integer, Integer> categoryIds = new HashMap<>();
@@ -245,9 +255,19 @@ public class OutletAdminService {
 				em.persist(copy);
 				priceCount++;
 			}
+			for (ExtraCharges source : extraCharges) {
+				ExtraCharges copy = copyOf(source);
+				copy.setBillingDetails(null);
+				em.persist(copy);
+			}
+			for (Discounts source : discounts) {
+				Discounts copy = copyOf(source);
+				copy.setBillingDetails(null);
+				em.persist(copy);
+			}
 			em.flush();
 			return new CopySummary(categoryIds.size(), unitIds.size(), washingTypeIds.size(), copiedItems.size(),
-					priceCount);
+					priceCount, extraCharges.size(), discounts.size());
 		});
 	}
 
