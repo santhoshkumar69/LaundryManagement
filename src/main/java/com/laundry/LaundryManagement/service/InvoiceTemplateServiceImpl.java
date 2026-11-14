@@ -3,8 +3,11 @@ package com.laundry.LaundryManagement.service;
 import com.laundry.LaundryManagement.auth.RequestScope;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,15 +41,26 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@Override
+	/** Every template of the company; the current outlet's own come first. */
 	public List<InvoiceTemplateSummary> listTemplates() {
-		Integer applied = currentOutlet().getInvoiceTemplateId();
-		return invoiceTemplateRepository.findLive(RequestScope.requireTenantId()).stream()
-				.map(t -> InvoiceTemplateSummary.of(t, t.getTemplateId().equals(applied))).collect(Collectors.toList());
+		int tenantId = RequestScope.requireTenantId();
+		OutletDetails current = currentOutlet();
+		Map<String, OutletDetails> outlets = new HashMap<>();
+		outletDetailsRepo.findByTenantIdOrderByIdAsc(tenantId).forEach(o -> outlets.put(String.valueOf(o.getId()), o));
+		Comparator<InvoiceTemplate> order = Comparator
+				.comparing((InvoiceTemplate t) -> !t.getLocationID().equals(String.valueOf(current.getId())))
+				.thenComparing(t -> outlets.get(t.getLocationID()).getId())
+				.thenComparing(InvoiceTemplate::getTemplateName, String.CASE_INSENSITIVE_ORDER);
+		return RequestScope.asSystem(() -> invoiceTemplateRepository.findLive(tenantId)).stream()
+				.filter(t -> outlets.containsKey(t.getLocationID())).sorted(order)
+				.map(t -> InvoiceTemplateSummary.of(t, t.getTemplateId().equals(current.getInvoiceTemplateId()),
+						outlets.get(t.getLocationID())))
+				.collect(Collectors.toList());
 	}
 
 	@Override
 	public InvoiceTemplate getTemplate(int templateId) {
-		return findLive(templateId);
+		return findCompanyTemplate(templateId);
 	}
 
 	@Override
@@ -104,7 +118,7 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 
 		InvoiceTemplate template;
 		if (request.getTemplateId() != null) {
-			template = findLive(request.getTemplateId());
+			template = findCompanyTemplate(request.getTemplateId());
 		} else {
 			template = new InvoiceTemplate();
 			template.setIsActive(0);
@@ -113,7 +127,8 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 			template.setCreatedBy(userName(globalInfo));
 			template.setCreatedDate(new Date());
 		}
-		boolean nameTaken = invoiceTemplateRepository.findLiveByName(RequestScope.requireTenantId(), name).stream()
+		int tenantId = RequestScope.requireTenantId();
+		boolean nameTaken = RequestScope.asSystem(() -> invoiceTemplateRepository.findLiveByName(tenantId, name)).stream()
 				.anyMatch(existing -> !existing.getTemplateId().equals(template.getTemplateId()));
 		if (nameTaken) {
 			throw new IllegalArgumentException("A template named \"" + name + "\" already exists");
@@ -129,13 +144,13 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 			template.setUpdatedBy(userName(globalInfo));
 			template.setUpdatedDate(new Date());
 		}
-		return invoiceTemplateRepository.save(template);
+		return template.getTemplateId() == null ? invoiceTemplateRepository.save(template) : saveForOwner(template);
 	}
 
 	@Override
 	@Transactional
 	public List<InvoiceTemplateSummary> applyTemplate(int templateId, GlobalInfo globalInfo) {
-		InvoiceTemplate target = templateId > 0 ? findLive(templateId) : null;
+		InvoiceTemplate target = templateId > 0 ? findCompanyTemplate(templateId) : null;
 		OutletDetails outlet = currentOutlet();
 		outlet.setInvoiceTemplateId(target == null ? null : target.getTemplateId());
 		outlet.setUpdatedBy(userName(globalInfo));
@@ -147,7 +162,7 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 	@Override
 	@Transactional
 	public List<InvoiceTemplateSummary> deleteTemplate(int templateId, GlobalInfo globalInfo) {
-		InvoiceTemplate template = findLive(templateId);
+		InvoiceTemplate template = findCompanyTemplate(templateId);
 		OutletDetails current = currentOutlet();
 		List<String> otherUsers = outletDetailsRepo.findByTenantIdOrderByIdAsc(RequestScope.requireTenantId()).stream()
 				.filter(o -> template.getTemplateId().equals(o.getInvoiceTemplateId()) && !o.getId().equals(current.getId()))
@@ -164,7 +179,7 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 		template.setIsActive(0);
 		template.setUpdatedBy(userName(globalInfo));
 		template.setUpdatedDate(new Date());
-		invoiceTemplateRepository.save(template);
+		saveForOwner(template);
 		return listTemplates();
 	}
 
@@ -173,13 +188,13 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 				.orElseThrow(() -> new IllegalArgumentException("Choose an outlet first"));
 	}
 
-	private InvoiceTemplate findLive(int templateId) {
-		InvoiceTemplate template = invoiceTemplateRepository.findById(templateId).orElse(null);
-		if (template == null || !Integer.valueOf(1).equals(template.getActiveStatus())
-				|| !Integer.valueOf(RequestScope.requireTenantId()).equals(template.getTenantId())) {
-			throw new IllegalArgumentException("Template not found");
-		}
-		return template;
+	/**
+	 * Saves and flushes under the owning outlet's scope, so editing another outlet's template does not
+	 * move it to the current outlet (saves are stamped with the scope's outlet).
+	 */
+	private InvoiceTemplate saveForOwner(InvoiceTemplate template) {
+		return RequestScope.asOutlet(Integer.parseInt(template.getLocationID()),
+				() -> invoiceTemplateRepository.saveAndFlush(template));
 	}
 
 	private void validateLayout(String layoutJson) {
