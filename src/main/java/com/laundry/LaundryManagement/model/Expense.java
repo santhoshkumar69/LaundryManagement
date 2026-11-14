@@ -86,6 +86,10 @@ public class Expense implements Serializable {
 	@Column(name = "CREATED_BY_LOGIN", length = 50)
 	private String createdByLogin;
 
+	/** The creator's open cashier shift at this outlet when the expense was recorded. */
+	@Column(name = "SHIFT_ID")
+	private Long shiftId;
+
 	@Column(name = "CREATED_DATE")
 	private Date createdDate;
 

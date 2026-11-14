@@ -37,6 +37,10 @@ public class Shift implements Serializable {
 	@Column(name = "ID")
 	private Long id;
 
+	/** Outlet code + "-SH" + running number, e.g. T1004-1-SH0001. */
+	@Column(name = "SHIFT_NO", length = 40)
+	private String shiftNo;
+
 	@Column(name = "TENANT_ID")
 	private Integer tenantId;
 
@@ -68,7 +72,25 @@ public class Shift implements Serializable {
 	@Column(name = "OPENING_NOTE")
 	private String openingNote;
 
-	/** Filled when the shift ends; open shifts are computed live. */
+	// The recorded-cash breakdown and totals below are filled when the shift ends; open shifts are computed live.
+
+	/** Cash taken at billing (advance / full payment), including cash later recalled. */
+	@Column(name = "BILL_CASH", precision = 12, scale = 2)
+	private BigDecimal billCash;
+
+	/** Cash taken on the Delivery screen, including the cash part of split payments. */
+	@Column(name = "DELIVERY_CASH", precision = 12, scale = 2)
+	private BigDecimal deliveryCash;
+
+	/** Cash payments recalled (handed back) during the shift. */
+	@Column(name = "RECALLED_CASH", precision = 12, scale = 2)
+	private BigDecimal recalledCash;
+
+	/** Expenses paid in cash that the cashier recorded during the shift. */
+	@Column(name = "EXPENSE_CASH", precision = 12, scale = 2)
+	private BigDecimal expenseCash;
+
+	/** Net recorded cash: bills + delivery - recalls - expenses. */
 	@Column(name = "CASH_COLLECTED", precision = 12, scale = 2)
 	private BigDecimal cashCollected;
 

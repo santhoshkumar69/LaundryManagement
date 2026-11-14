@@ -78,6 +78,9 @@ public class ExpenseService {
 	@Autowired
 	private ExpenseCategoryService categoryService;
 
+	@Autowired
+	private ShiftService shiftService;
+
 	/** Defaults to the current month when no dates are given. */
 	public ExpenseList list(String from, String to, Long categoryId, String category) {
 		LocalDate start = isBlank(from) ? LocalDate.now().withDayOfMonth(1) : date(from, "From date");
@@ -155,6 +158,7 @@ public class ExpenseService {
 			expense.setCreatedBy(user.userName());
 			expense.setCreatedByLogin(user.loginId());
 			expense.setCreatedDate(new Date());
+			expense.setShiftId(shiftService.openShiftIdHere());
 		} else {
 			expense = live(request.id());
 			expense.setUpdatedBy(user.userName());

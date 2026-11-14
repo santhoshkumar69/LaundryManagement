@@ -15,6 +15,7 @@ public class OutletSequenceService {
 
 	public static final String RECEIPT = "BILL";
 	public static final String PAYMENT = "PAY";
+	public static final String SHIFT = "SHIFT";
 
 	@Autowired
 	private OutletSequenceRepo repo;
@@ -22,6 +23,12 @@ public class OutletSequenceService {
 	/** Next number of the series for the caller's outlet, formatted with the series prefix. */
 	@Transactional(propagation = Propagation.REQUIRED)
 	public String next(String series) {
+		return series + nextNumber(series);
+	}
+
+	/** Next number of the series for the caller's outlet; the row is locked until the transaction ends. */
+	@Transactional(propagation = Propagation.REQUIRED)
+	public long nextNumber(String series) {
 		int outletId = RequestScope.requireOutletId();
 		OutletSequence sequence = repo.findForUpdate(outletId, series).orElseGet(() -> {
 			OutletSequence created = new OutletSequence();
@@ -32,6 +39,6 @@ public class OutletSequenceService {
 		});
 		sequence.setLastValue(sequence.getLastValue() + 1);
 		repo.save(sequence);
-		return series + sequence.getLastValue();
+		return sequence.getLastValue();
 	}
 }

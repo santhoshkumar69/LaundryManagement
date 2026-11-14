@@ -170,6 +170,7 @@ public class BillingServiceImpl implements BillingService {
 			pay.setPaidAmount(confirmBill.getPaidAmount());
 			pay.setPayDate(new Date());
 			pay.setPaidMode(confirmBill.getPayMode());
+			pay.setPaySource(PaymentDetails.SOURCE_BILLING);
 			pay.setShiftId(shiftService.openShiftIdHere());
 			CommonUtills.addDefaultCreateInfos(pay, pay.getClass(), globalInfo);
 			paymentRepo.save(pay);
@@ -475,6 +476,7 @@ public class BillingServiceImpl implements BillingService {
 			pay.setPaidAmount(partAmount);
 			pay.setPayDate(new Date());
 			pay.setPaidMode(part.getPayMode());
+			pay.setPaySource(PaymentDetails.SOURCE_DELIVERY);
 			pay.setShiftId(shiftService.openShiftIdHere());
 			CommonUtills.addDefaultCreateInfos(pay, pay.getClass(), globalInfo);
 			paymentRepo.save(pay);
@@ -635,6 +637,7 @@ public class BillingServiceImpl implements BillingService {
 		pay.setRecalledDate(new Date());
 		pay.setRecalledBy(globalInfo != null ? globalInfo.getUserName() : null);
 		pay.setRecallReason(reason);
+		pay.setRecallShiftId(shiftService.shiftIdForRecall(pay.getShiftId()));
 		paymentRepo.save(pay);
 
 		inv.setPaidAmount(round2(Math.max(inv.getPaidAmount() - pay.getPaidAmount(), 0)));

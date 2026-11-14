@@ -28,9 +28,10 @@ import jakarta.persistence.PersistenceContext;
 
 /**
  * Cashier shifts. A user whose role requires shifts has at most one open shift, tied to the outlet it was
- * started in; billing and taking payments there need it. Cash collected is the Cash-mode payments the
- * cashier took during the shift (split payments count their cash part), minus earlier cash payments the
- * cashier recalled during the shift.
+ * started in; billing and taking payments there need it. Recorded cash is every cash movement of the shift:
+ * cash taken at billing and on the Delivery screen (split payments count their cash part), minus cash payments
+ * recalled during the shift, minus cash expenses the cashier recorded during it. Each shift gets a per-outlet
+ * number such as T1004-1-SH0001.
  */
 @Service
 public class ShiftService {
@@ -38,11 +39,21 @@ public class ShiftService {
 	private static final BigDecimal MAX_AMOUNT = new BigDecimal("9999999999.99");
 	private static final int MAX_NOTE_LENGTH = 255;
 
-	/** Times are ISO-8601 instants (e.g. 2026-11-14T10:15:30Z) so the browser timer can count from them. */
-	public record ShiftView(Long id, Integer outletId, String outletName, Integer userDbId, String loginId,
-			String userName, String status, String startTime, String endTime, long durationMinutes,
-			BigDecimal openingCash, String openingNote, BigDecimal cashCollected, BigDecimal expectedCash,
+	/**
+	 * Times are ISO-8601 instants (e.g. 2026-11-14T10:15:30Z) so the browser timer can count from them.
+	 * cashCollected is the net recorded cash; expectedCash = openingCash + cashCollected.
+	 */
+	public record ShiftView(Long id, String shiftNo, Integer outletId, String outletName, Integer userDbId,
+			String loginId, String userName, String status, String startTime, String endTime, long durationMinutes,
+			BigDecimal openingCash, String openingNote, BigDecimal billCash, BigDecimal deliveryCash,
+			BigDecimal recalledCash, BigDecimal expenseCash, BigDecimal cashCollected, BigDecimal expectedCash,
 			BigDecimal closingCash, BigDecimal difference, String closingNote, String endedBy) {
+	}
+
+	private record CashBreakdown(BigDecimal bills, BigDecimal delivery, BigDecimal recalled, BigDecimal expenses) {
+		BigDecimal net() {
+			return bills.add(delivery).subtract(recalled).subtract(expenses);
+		}
 	}
 
 	/** shift is the user's open shift wherever it is; inThisOutlet says whether it is in the current outlet. */
@@ -67,6 +78,9 @@ public class ShiftService {
 	@Autowired
 	private RolePermissions rolePermissions;
 
+	@Autowired
+	private OutletSequenceService outletSequenceService;
+
 	@PersistenceContext
 	private EntityManager em;
 
@@ -88,14 +102,19 @@ public class ShiftService {
 			throw new IllegalArgumentException("You already have an open shift at " + outletName(open)
 					+ ". End it before starting a new one.");
 		}
+		BigDecimal openingCash = amount(request == null ? null : request.openingCash(), "Opening cash");
+		String openingNote = note(request == null ? null : request.note());
+		OutletDetails outlet = outletRepo.findById(RequestScope.requireOutletId()).orElseThrow();
 		Shift shift = new Shift();
+		shift.setShiftNo(String.format("%s-SH%04d", outlet.getOutletCode(),
+				outletSequenceService.nextNumber(OutletSequenceService.SHIFT)));
 		shift.setUserDbId(scope.userDbId());
 		shift.setLoginId(scope.loginId());
 		shift.setUserName(scope.userName());
 		shift.setStatus(Shift.OPEN);
 		shift.setStartTime(new Date());
-		shift.setOpeningCash(amount(request == null ? null : request.openingCash(), "Opening cash"));
-		shift.setOpeningNote(note(request == null ? null : request.note()));
+		shift.setOpeningCash(openingCash);
+		shift.setOpeningNote(openingNote);
 		return view(shiftRepo.save(shift), outletNames());
 	}
 
@@ -171,15 +190,31 @@ public class ShiftService {
 		return open != null && isHere(open) ? open.getId() : null;
 	}
 
+	/**
+	 * The shift a recall is counted against: the recaller's open shift here, or else (e.g. an admin recalling) the
+	 * shift the payment was taken in while that shift is still open, since the cash leaves its drawer.
+	 */
+	public Long shiftIdForRecall(Long paymentShiftId) {
+		Long mine = openShiftIdHere();
+		if (mine != null) {
+			return mine;
+		}
+		return paymentShiftId != null && Shift.OPEN.equals(shiftRepo.statusOf(paymentShiftId)) ? paymentShiftId : null;
+	}
+
 	// ---- Helpers ----
 
 	private ShiftView close(Shift shift, EndShiftRequest request, String endedBy) {
 		BigDecimal closing = amount(request == null ? null : request.closingCash(), "Closing cash");
-		Date endTime = new Date();
-		BigDecimal collected = cashCollected(shift, endTime);
+		CashBreakdown cash = recordedCash(shift);
+		BigDecimal collected = cash.net();
 		BigDecimal expected = shift.getOpeningCash().add(collected);
-		shift.setEndTime(endTime);
+		shift.setEndTime(new Date());
 		shift.setStatus(Shift.CLOSED);
+		shift.setBillCash(cash.bills());
+		shift.setDeliveryCash(cash.delivery());
+		shift.setRecalledCash(cash.recalled());
+		shift.setExpenseCash(cash.expenses());
 		shift.setCashCollected(collected);
 		shift.setExpectedCash(expected);
 		shift.setClosingCash(closing);
@@ -189,25 +224,36 @@ public class ShiftService {
 		return view(shiftRepo.save(shift), outletNames());
 	}
 
-	private BigDecimal cashCollected(Shift shift, Date until) {
-		return inOutletOf(shift, () -> {
-			double taken = shiftRepo.cashTakenInShift(shift.getId());
-			double refunded = shiftRepo.cashRefundedDuringShift(shift.getId(), shift.getUserName(), shift.getStartTime(),
-					until);
-			return BigDecimal.valueOf(taken - refunded).setScale(2, RoundingMode.HALF_UP);
-		});
+	/** Payments, recalls and expenses tagged with the shift; read as the shift's outlet since they are outlet-scoped. */
+	private CashBreakdown recordedCash(Shift shift) {
+		return inOutletOf(shift, () -> new CashBreakdown(money(shiftRepo.billCash(shift.getId())),
+				money(shiftRepo.deliveryCash(shift.getId())), money(shiftRepo.recalledCash(shift.getId())),
+				shiftRepo.expenseCash(shift.getId()).setScale(2, RoundingMode.HALF_UP)));
+	}
+
+	private static BigDecimal money(Double value) {
+		return BigDecimal.valueOf(value == null ? 0 : value).setScale(2, RoundingMode.HALF_UP);
 	}
 
 	private ShiftView view(Shift s, Map<String, String> outletNames) {
 		boolean open = Shift.OPEN.equals(s.getStatus());
 		Date end = open ? new Date() : s.getEndTime();
-		BigDecimal collected = open ? cashCollected(s, end) : s.getCashCollected();
+		CashBreakdown cash = open ? recordedCash(s)
+				: new CashBreakdown(zeroIfNull(s.getBillCash()), zeroIfNull(s.getDeliveryCash()),
+						zeroIfNull(s.getRecalledCash()), zeroIfNull(s.getExpenseCash()));
+		BigDecimal collected = open ? cash.net() : s.getCashCollected();
 		BigDecimal expected = open ? s.getOpeningCash().add(collected) : s.getExpectedCash();
 		long minutes = Math.max(0, (end.getTime() - s.getStartTime().getTime()) / 60000);
-		return new ShiftView(s.getId(), Integer.valueOf(s.getLocationID()), outletNames.getOrDefault(s.getLocationID(), ""),
-				s.getUserDbId(), s.getLoginId(), s.getUserName(), s.getStatus(), s.getStartTime().toInstant().toString(),
+		return new ShiftView(s.getId(), s.getShiftNo(), Integer.valueOf(s.getLocationID()),
+				outletNames.getOrDefault(s.getLocationID(), ""), s.getUserDbId(), s.getLoginId(), s.getUserName(),
+				s.getStatus(), s.getStartTime().toInstant().toString(),
 				open ? null : s.getEndTime().toInstant().toString(), minutes, s.getOpeningCash(), s.getOpeningNote(),
-				collected, expected, s.getClosingCash(), s.getDifference(), s.getClosingNote(), s.getEndedBy());
+				cash.bills(), cash.delivery(), cash.recalled(), cash.expenses(), collected, expected,
+				s.getClosingCash(), s.getDifference(), s.getClosingNote(), s.getEndedBy());
+	}
+
+	private static BigDecimal zeroIfNull(BigDecimal value) {
+		return value == null ? BigDecimal.ZERO.setScale(2) : value;
 	}
 
 	private Shift openShift(RequestScope.Scope scope) {

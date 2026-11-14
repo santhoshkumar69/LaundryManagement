@@ -257,6 +257,17 @@ public class PaymentDetails implements Serializable{
 	@Column(name = "RECALL_REASON", length = 255)
 	private String recallReason;
 
+	public static final String SOURCE_BILLING = "BILLING";
+	public static final String SOURCE_DELIVERY = "DELIVERY";
+
+	/** Where the money was taken: BILLING (when the bill is made) or DELIVERY (Delivery screen). */
+	@Column(name = "PAY_SOURCE", length = 20)
+	private String paySource;
+
+	/** The cashier shift during which the payment was recalled, if any. */
+	@Column(name = "RECALL_SHIFT_ID")
+	private Long recallShiftId;
+
 	public String getPayStatus() {
 		return payStatus;
 	}
