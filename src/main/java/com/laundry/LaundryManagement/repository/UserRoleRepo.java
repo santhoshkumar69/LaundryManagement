@@ -43,6 +43,9 @@ public interface UserRoleRepo extends JpaRepository<RoleDetails, Long> {
 	@Query("select roleDetails from RoleDetails roleDetails where "
 			+ "roleDetails.userRole = :userRole ")
 	RoleDetails findRoleByName(@Param("userRole") String userRole);
+
+	@Query("from RoleDetails r where r.tenantId = :tenantId and r.userRole = :userRole and r.activeStatus = 1")
+	RoleDetails findActiveRole(@Param("tenantId") int tenantId, @Param("userRole") String userRole);
 	
 	
 	

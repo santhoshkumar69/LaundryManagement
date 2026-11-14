@@ -12,8 +12,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.laundry.LaundryManagement.auth.DeletedOutlets;
+import com.laundry.LaundryManagement.auth.RolePermissions;
 import com.laundry.LaundryManagement.dto.ReturnResponse;
 import com.laundry.LaundryManagement.service.OutletAdminService;
+import com.laundry.LaundryManagement.service.RoleAdminService;
 import com.laundry.LaundryManagement.service.UserAdminService;
 
 /** Outlets and users of the signed-in admin's tenant. */
@@ -30,6 +32,12 @@ public class TenantAdminController {
 
 	@Autowired
 	private DeletedOutlets deletedOutlets;
+
+	@Autowired
+	private RoleAdminService roleAdminService;
+
+	@Autowired
+	private RolePermissions rolePermissions;
 
 	@GetMapping("/outlets")
 	public ResponseEntity<Object> outlets(
@@ -64,6 +72,30 @@ public class TenantAdminController {
 	@GetMapping("/roles")
 	public ResponseEntity<Object> roles() {
 		return ResponseEntity.ok(userAdminService.roles());
+	}
+
+	@GetMapping("/roles/catalog")
+	public ResponseEntity<Object> permissionCatalog() {
+		return ResponseEntity.ok(roleAdminService.catalog());
+	}
+
+	@GetMapping("/roles/details")
+	public ResponseEntity<Object> roleDetails() {
+		return ResponseEntity.ok(roleAdminService.list());
+	}
+
+	@PostMapping("/roles/save")
+	public ResponseEntity<Object> saveRole(@RequestBody RoleAdminService.SaveRoleRequest request) {
+		RoleAdminService.RoleSummary saved = roleAdminService.save(request);
+		rolePermissions.refresh();
+		return ResponseEntity.ok(saved);
+	}
+
+	@PostMapping("/roles/delete")
+	public ResponseEntity<Object> deleteRole(@RequestParam("id") Integer id) {
+		roleAdminService.delete(id);
+		rolePermissions.refresh();
+		return ResponseEntity.ok(roleAdminService.list());
 	}
 
 	@PostMapping("/users")

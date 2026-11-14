@@ -3,6 +3,7 @@ package com.laundry.LaundryManagement.auth;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,7 +29,7 @@ public class AuthService {
 	}
 
 	public record Session(String token, String userId, String userName, String role, String tenantCode,
-			String companyName, OutletOption outlet, List<OutletOption> outlets) {
+			String companyName, OutletOption outlet, List<OutletOption> outlets, Set<String> permissions) {
 	}
 
 	public static class AuthException extends RuntimeException {
@@ -64,6 +65,9 @@ public class AuthService {
 	@Autowired
 	private AuthTokenService tokens;
 
+	@Autowired
+	private RolePermissions rolePermissions;
+
 	public Session login(String tenantCode, String loginId, String password) {
 		if (tenantCode == null || tenantCode.isBlank() || loginId == null || loginId.isBlank() || password == null || password.isEmpty()) {
 			throw new AuthException("Enter your tenant ID, login ID and password");
@@ -85,7 +89,8 @@ public class AuthService {
 			RequestScope.Scope scope = new RequestScope.Scope(user.getId(), user.getUserId(), user.getUserName(),
 					user.getRole(), tenant.getId(), chosen == null ? null : chosen.id(), false);
 			return new Session(tokens.issue(scope), user.getUserId(), user.getUserName(), user.getRole(),
-					tenant.getTenantCode(), tenant.getCompanyName(), chosen, outlets);
+					tenant.getTenantCode(), tenant.getCompanyName(), chosen, outlets,
+					rolePermissions.of(tenant.getId(), user.getRole()));
 		});
 	}
 
@@ -109,7 +114,7 @@ public class AuthService {
 			OutletOption chosen = outlets.stream().filter(o -> o.id().equals(scope.outletId())).findFirst().orElse(null);
 			TenantDetails tenant = tenantRepo.findById(scope.tenantId()).orElseThrow();
 			return new Session(null, user.getUserId(), user.getUserName(), user.getRole(), tenant.getTenantCode(),
-					tenant.getCompanyName(), chosen, outlets);
+					tenant.getCompanyName(), chosen, outlets, rolePermissions.of(scope.tenantId(), user.getRole()));
 		});
 	}
 
@@ -148,6 +153,7 @@ public class AuthService {
 		RequestScope.Scope scope = new RequestScope.Scope(user.getId(), user.getUserId(), user.getUserName(),
 				user.getRole(), tenantId, chosen.id(), false);
 		return new Session(tokens.issue(scope), user.getUserId(), user.getUserName(), user.getRole(),
-				tenant.getTenantCode(), tenant.getCompanyName(), chosen, outlets);
+				tenant.getTenantCode(), tenant.getCompanyName(), chosen, outlets,
+				rolePermissions.of(tenantId, user.getRole()));
 	}
 }

@@ -30,10 +30,12 @@ public class AuthFilter extends OncePerRequestFilter {
 
 	private final AuthTokenService tokens;
 	private final DeletedOutlets deletedOutlets;
+	private final RolePermissions rolePermissions;
 
-	public AuthFilter(AuthTokenService tokens, DeletedOutlets deletedOutlets) {
+	public AuthFilter(AuthTokenService tokens, DeletedOutlets deletedOutlets, RolePermissions rolePermissions) {
 		this.tokens = tokens;
 		this.deletedOutlets = deletedOutlets;
+		this.rolePermissions = rolePermissions;
 	}
 
 	@Override
@@ -63,6 +65,12 @@ public class AuthFilter extends OncePerRequestFilter {
 		}
 		if (!scope.isAdmin() && startsWithAny(path, ADMIN_PATHS)) {
 			reject(request, response, HttpServletResponse.SC_FORBIDDEN, "Only an admin can do this.");
+			return;
+		}
+		List<String> required = scope.isAdmin() ? null : PermissionRules.requiredFor(path);
+		if (required != null && !rolePermissions.allowsAny(scope, required)) {
+			reject(request, response, HttpServletResponse.SC_FORBIDDEN,
+					"Your role does not allow this. Ask your admin for access.");
 			return;
 		}
 		RequestScope.set(scope);

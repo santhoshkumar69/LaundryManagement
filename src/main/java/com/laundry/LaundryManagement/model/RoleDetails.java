@@ -60,6 +60,10 @@ public class RoleDetails implements Serializable{
 	@Column(name = "TENANT_ID")
 	private int tenantId;
 
+	/** Comma-separated permission codes (see Permissions); ignored for the Admin role, which has them all. */
+	@Column(name = "PERMISSIONS", columnDefinition = "TEXT")
+	private String permissions;
+
 	public String getUserRole() {
 		return userRole;
 	}

@@ -1,5 +1,8 @@
 package com.laundry.LaundryManagement.controller;
 
+import com.laundry.LaundryManagement.auth.Permissions;
+import com.laundry.LaundryManagement.auth.RolePermissions;
+
 import com.laundry.LaundryManagement.auth.RequestScope;
 
 import jakarta.servlet.http.HttpSession;
@@ -30,6 +33,9 @@ public class InvoiceTemplateController {
 	@Autowired
 	private InvoiceTemplateService invoiceTemplateService;
 
+	@Autowired
+	private RolePermissions rolePermissions;
+
 	@GetMapping("/list")
 	public ResponseEntity<Object> listTemplates() {
 		return ResponseEntity.ok().body(invoiceTemplateService.listTemplates());
@@ -52,6 +58,8 @@ public class InvoiceTemplateController {
 
 	@PostMapping("/save")
 	public ResponseEntity<Object> saveTemplate(@RequestBody InvoiceTemplate template, HttpSession httpSession) {
+		rolePermissions.require("INVOICE_TEMPLATE",
+				template.getTemplateId() == null ? Permissions.Action.CREATE : Permissions.Action.EDIT);
 		try {
 			return ResponseEntity.ok().body(invoiceTemplateService.saveTemplate(template, globalInfo(httpSession)));
 		} catch (IllegalArgumentException e) {

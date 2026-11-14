@@ -1,5 +1,8 @@
 package com.laundry.LaundryManagement.controller;
 
+import com.laundry.LaundryManagement.auth.Permissions;
+import com.laundry.LaundryManagement.auth.RolePermissions;
+
 import jakarta.servlet.http.HttpSession;
 
 import com.laundry.LaundryManagement.constant.AppStatus;
@@ -27,12 +30,17 @@ public class ManageDiscountsController {
 
 	@Autowired
     ManageDiscountsService manageDiscountsService;
+
+	@Autowired
+	private RolePermissions rolePermissions;
 	
 	@Autowired
 	ManageDiscountsRepo manageDiscountsRepo;
 
 	@PostMapping("/saveDiscounts")
 	public ResponseEntity<Object> createItemDetails(@RequestBody Discounts discounts, HttpSession httpSession) {
+		rolePermissions.require("DISCOUNTS",
+				discounts.getId() == null ? Permissions.Action.CREATE : Permissions.Action.EDIT);
 		try {
 			boolean isSaved = false;
 			if(discounts.getDiscountName() != null) {

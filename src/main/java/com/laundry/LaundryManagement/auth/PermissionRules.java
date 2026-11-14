@@ -1,0 +1,74 @@
+package com.laundry.LaundryManagement.auth;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Permissions a non-admin needs to call each create/edit/delete endpoint; holding any one of the
+ * listed codes is enough. Read endpoints are not listed because several screens share them (the
+ * bill screens read categories and items); the app hides screens a role cannot view.
+ */
+final class PermissionRules {
+
+	private static final Map<String, List<String>> RULES = new HashMap<>();
+
+	static {
+		crud("CATEGORY", "/itemCategory/createItemCategory", "/itemCategory/updateItemsCategory",
+				"/itemCategory/deActiveItemCategory", "/itemCategory/activateItemCategory");
+		crud("UNIT", "/unit/createUnit", "/unit/updateUnit", "/unit/deActiveUnit", "/unit/activateUnit");
+		crud("LAUNDRY_TYPE", "/WashingType/createWashingType", "/WashingType/updateWashingType",
+				"/WashingType/deActiveWashingType", "/WashingType/activeWashingType");
+		crud("ITEMS", "/master/createitem", "/master/updateitem", "/master/deactivateitem", "/master/activateItem");
+		rule("/bulkUpload/importExcel", "ITEMS.CREATE");
+
+		// Saving with an ID edits, without one creates; the controllers check which.
+		rule("/manage/saveExtraCharges", "EXTRA_CHARGES.CREATE", "EXTRA_CHARGES.EDIT");
+		rule("/manage/activateExtraCharges", "EXTRA_CHARGES.DELETE");
+		rule("/manage/deActivateExtraCharges", "EXTRA_CHARGES.DELETE");
+		rule("/manage/saveDiscounts", "DISCOUNTS.CREATE", "DISCOUNTS.EDIT");
+		rule("/manage/activateDiscounts", "DISCOUNTS.DELETE");
+		rule("/manage/deActivateDiscounts", "DISCOUNTS.DELETE");
+
+		rule("/billing/createEstimation", "RECEIVING.CREATE");
+		rule("/billing/confirmBilling", "RECEIVING.CREATE");
+		rule("/billing/cancelBilling", "RECEIVING.CREATE");
+		rule("/billing/removeItem", "RECEIVING.CREATE");
+		rule("/billing/updateOrderStatus", "ORDER_STATUS.EDIT", "DELIVERY.EDIT");
+		rule("/billing/updateItemRemarks", "ORDER_STATUS.EDIT", "DELIVERY.EDIT");
+		rule("/billing/payOrder", "DELIVERY.EDIT", "ORDER_STATUS.EDIT");
+		rule("/billing/recallPayment", "DELIVERY.EDIT", "ORDER_STATUS.EDIT");
+		rule("/billing/removeOrderItems", "DELIVERY.EDIT", "ORDER_STATUS.EDIT");
+		rule("/billing/deleteOrders", "ORDER_STATUS.DELETE", "DELIVERY.DELETE");
+
+		// Receiving can add a new customer while billing.
+		rule("/customerInfo/createCustomerInfo", "CUSTOMERS.CREATE", "RECEIVING.CREATE");
+		// The app has no customer edit screen, so editing stays with admins.
+		rule("/customerInfo/updateCustomerInfo", "CUSTOMERS.EDIT");
+		rule("/customerInfo/deActiveCustomerInfo", "CUSTOMERS.DELETE");
+		rule("/customerInfo/activeCustomer", "CUSTOMERS.DELETE");
+
+		rule("/invoiceTemplate/save", "INVOICE_TEMPLATE.CREATE", "INVOICE_TEMPLATE.EDIT");
+		rule("/invoiceTemplate/apply", "INVOICE_TEMPLATE.EDIT");
+		rule("/invoiceTemplate/delete", "INVOICE_TEMPLATE.DELETE");
+	}
+
+	private PermissionRules() {
+	}
+
+	/** Codes that allow the path, or null when the path needs no specific permission. */
+	static List<String> requiredFor(String path) {
+		return RULES.get(path.endsWith("/") ? path.substring(0, path.length() - 1) : path);
+	}
+
+	private static void crud(String screen, String create, String edit, String delete, String restore) {
+		rule(create, screen + ".CREATE");
+		rule(edit, screen + ".EDIT");
+		rule(delete, screen + ".DELETE");
+		rule(restore, screen + ".DELETE");
+	}
+
+	private static void rule(String path, String... codes) {
+		RULES.put(path, List.of(codes));
+	}
+}

@@ -18,6 +18,7 @@ import com.laundry.LaundryManagement.dto.RegistrationResult;
 import com.laundry.LaundryManagement.model.OutletDetails;
 import com.laundry.LaundryManagement.model.TenantDetails;
 import com.laundry.LaundryManagement.auth.LoginIds;
+import com.laundry.LaundryManagement.auth.Permissions;
 import com.laundry.LaundryManagement.auth.RequestScope;
 import com.laundry.LaundryManagement.model.RoleDetails;
 import com.laundry.LaundryManagement.model.UserInfo;
@@ -159,6 +160,7 @@ public class RegistrationServiceImpl implements RegistrationService {
 			RoleDetails role = new RoleDetails();
 			role.setUserRole(roleName);
 			role.setActiveStatus(1);
+			role.setPermissions(Permissions.format(Permissions.all()));
 			role.setTenantId(tenant.getId());
 			role.setCreatedBy("registration");
 			role.setCreatedDate(new Date());

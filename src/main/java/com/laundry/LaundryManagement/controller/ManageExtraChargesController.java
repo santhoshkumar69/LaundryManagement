@@ -1,5 +1,8 @@
 package com.laundry.LaundryManagement.controller;
 
+import com.laundry.LaundryManagement.auth.Permissions;
+import com.laundry.LaundryManagement.auth.RolePermissions;
+
 import jakarta.servlet.http.HttpSession;
 
 import com.laundry.LaundryManagement.constant.AppStatus;
@@ -26,12 +29,17 @@ public class ManageExtraChargesController {
 	
 	@Autowired
     ManageExtraChargesService manageExtraChargesService;
+
+	@Autowired
+	private RolePermissions rolePermissions;
 	
 	@Autowired
 	ManageExtraChargesRepo manageExtraChargesRepo;
 
 	@PostMapping("/saveExtraCharges")
 	public ResponseEntity<Object> createItemDetails(@RequestBody ExtraCharges extraCharges, HttpSession httpSession) {
+		rolePermissions.require("EXTRA_CHARGES",
+				extraCharges.getId() == null ? Permissions.Action.CREATE : Permissions.Action.EDIT);
 		try {
 			boolean isSaved = false;
 			if(extraCharges.getChargeName() != null) {
