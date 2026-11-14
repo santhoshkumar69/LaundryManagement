@@ -5,10 +5,12 @@ import java.util.List;
 
 public class PayOrderRequest {
 
-	/** One payment method and the amount taken with it; used to split a payment across Cash and Card. */
+	/** One payment method and the amount taken with it; used to split a payment across methods. */
 	public static class Part {
 		private String payMode;
 		private double amount;
+		/** Required when the outlet's payment mode asks for a card type. */
+		private String cardType;
 
 		public Part() {
 		}
@@ -32,6 +34,14 @@ public class PayOrderRequest {
 
 		public void setAmount(double amount) {
 			this.amount = amount;
+		}
+
+		public String getCardType() {
+			return cardType;
+		}
+
+		public void setCardType(String cardType) {
+			this.cardType = cardType;
 		}
 	}
 

@@ -35,10 +35,14 @@ public final class Permissions {
 			new Screen("ORDER_STATUS", "Bill", "Order Status", List.of(Action.VIEW, Action.EDIT, Action.DELETE)),
 			new Screen("DELIVERY", "Bill", "Delivery", List.of(Action.VIEW, Action.EDIT, Action.DELETE)),
 			new Screen("CUSTOMERS", "Customer", "Manage Customer", List.of(Action.VIEW, Action.CREATE, Action.DELETE)),
-			new Screen("CREDIT_LIST", "Customer", "Credit List", List.of(Action.VIEW)),
+			new Screen("CREDIT_LIST", "Customer", "Credit List", List.of(Action.VIEW, Action.EDIT)),
 			new Screen("EXPENSES", "Accounts", "Expense Track", ALL_ACTIONS),
 			new Screen("EXPENSE_CATEGORIES", "Accounts", "Expense Categories", ALL_ACTIONS),
 			new Screen("SHIFTS", "Accounts", "Shifts", List.of(Action.VIEW, Action.EDIT)),
+			new Screen("DAILY_SALES", "Accounts", "Daily Sales Reports", List.of(Action.VIEW)),
+			new Screen("GENERAL_REPORTS", "Accounts", "General Reports", List.of(Action.VIEW)),
+			new Screen("CREDIT_REPORTS", "Accounts", "Credit Reports", List.of(Action.VIEW)),
+			new Screen("VOID_REPORTS", "Accounts", "Void Reports", List.of(Action.VIEW)),
 			new Screen("INVOICE_TEMPLATE", "Settings", "Invoice Template", ALL_ACTIONS));
 
 	private static final Set<String> ALL_CODES = SCREENS.stream()

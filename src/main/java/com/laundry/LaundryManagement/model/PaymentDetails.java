@@ -259,8 +259,9 @@ public class PaymentDetails implements Serializable{
 
 	public static final String SOURCE_BILLING = "BILLING";
 	public static final String SOURCE_DELIVERY = "DELIVERY";
+	public static final String SOURCE_CREDIT = "CREDIT";
 
-	/** Where the money was taken: BILLING (when the bill is made) or DELIVERY (Delivery screen). */
+	/** Where the money was taken: BILLING, DELIVERY, or CREDIT (Credit List collect). */
 	@Column(name = "PAY_SOURCE", length = 20)
 	private String paySource;
 

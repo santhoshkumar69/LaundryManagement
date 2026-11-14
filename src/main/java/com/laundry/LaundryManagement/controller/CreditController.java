@@ -12,14 +12,18 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.laundry.LaundryManagement.auth.RequestScope;
+import com.laundry.LaundryManagement.dto.CollectCreditRequest;
 import com.laundry.LaundryManagement.dto.ReturnResponse;
 import com.laundry.LaundryManagement.repository.OutletDetailsRepo;
 import com.laundry.LaundryManagement.service.CreditService;
+import com.laundry.LaundryManagement.service.ShiftService;
 
 /** Customer > Credit List: unpaid balances of the current outlet by customer. */
 @CrossOrigin(origins = "http://localhost:4200", maxAge = 3600)
@@ -35,6 +39,9 @@ public class CreditController {
 
 	@Autowired
 	private OutletDetailsRepo outletRepo;
+
+	@Autowired
+	private ShiftService shiftService;
 
 	@GetMapping("/list")
 	public ResponseEntity<Object> list(@RequestParam(value = "search", required = false) String search,
@@ -58,6 +65,12 @@ public class CreditController {
 				.header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(fileName).build().toString())
 				.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, HttpHeaders.CONTENT_DISPOSITION)
 				.body(creditService.export(search, band, minBalance));
+	}
+
+	@PostMapping("/collect")
+	public ResponseEntity<Object> collect(@RequestBody CollectCreditRequest request) {
+		shiftService.requireShiftForCashWork();
+		return ResponseEntity.ok(creditService.collect(request, RequestScope.globalInfo()));
 	}
 
 	@ExceptionHandler(IllegalArgumentException.class)

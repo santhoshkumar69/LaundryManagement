@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -18,12 +19,19 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.laundry.LaundryManagement.common.CommonUtills;
+import com.laundry.LaundryManagement.dto.CollectCreditRequest;
 import com.laundry.LaundryManagement.excel.ExcelSheet;
 import com.laundry.LaundryManagement.model.CustomerInfo;
+import com.laundry.LaundryManagement.model.GlobalInfo;
 import com.laundry.LaundryManagement.model.InvoiceDetails;
 import com.laundry.LaundryManagement.model.PaymentDetails;
+import com.laundry.LaundryManagement.model.PaymentMode;
 import com.laundry.LaundryManagement.repository.CustomerInfoRepo;
+import com.laundry.LaundryManagement.repository.PaymentModeRepo;
+import com.laundry.LaundryManagement.repository.PaymentRepository;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -38,6 +46,7 @@ public class CreditService {
 	/** Customer ID used for bills without a customer. */
 	public static final int WALK_IN = 0;
 	private static final double OPEN = 0.004;
+	private static final double MONEY_TOLERANCE = 0.005;
 	private static final String RECALLED = "RECALLED";
 
 	/** Age bands by days since the bill date; the last one is open-ended. */
@@ -70,8 +79,37 @@ public class CreditService {
 			List<StatementLine> statement) {
 	}
 
+	public record ModeTotal(String payMode, BigDecimal amount) {
+	}
+
+	public record BillPayment(int invId, String receiptNo, BigDecimal applied, BigDecimal balanceAfter,
+			List<ModeTotal> parts) {
+	}
+
+	public record PaymentLine(int payId, String paymentReceiptNo, int invId, String billReceiptNo, String payMode,
+			BigDecimal amount) {
+	}
+
+	/** Result of collecting against open bills; enough for an 80 mm payment receipt. */
+	public record CollectResult(int customerId, String customerName, String mobileNo, BigDecimal amount,
+			BigDecimal remainingBalance, List<ModeTotal> modes, List<BillPayment> bills, List<PaymentLine> payments,
+			String collectedAt, String collectedBy) {
+	}
+
 	@Autowired
 	private CustomerInfoRepo customerRepo;
+
+	@Autowired
+	private PaymentRepository paymentRepo;
+
+	@Autowired
+	private PaymentModeRepo paymentModeRepo;
+
+	@Autowired
+	private OutletSequenceService outletSequenceService;
+
+	@Autowired
+	private ShiftService shiftService;
 
 	@PersistenceContext
 	private EntityManager em;
@@ -171,7 +209,165 @@ public class CreditService {
 				"Oldest bill", "Age (days)", "Age band", "Last payment"), rows);
 	}
 
+	/**
+	 * Takes a payment against the customer's open bills at this outlet. Money is applied oldest bill first
+	 * (or only to the ticked bills, still oldest first among those). Cash is tagged to the open shift.
+	 */
+	@Transactional
+	public CollectResult collect(CollectCreditRequest request, GlobalInfo globalInfo) {
+		if (request == null) {
+			throw new IllegalArgumentException("Payment details are required");
+		}
+		int customerId = request.getCustomerId();
+		CustomerInfo customer = null;
+		List<InvoiceDetails> candidates;
+		if (customerId == WALK_IN) {
+			candidates = openBills().stream().filter(inv -> inv.getCusID() <= 0).toList();
+		} else {
+			customer = customerRepo.findById(customerId).orElse(null);
+			candidates = em.createQuery("from InvoiceDetails inv where inv.cusID = :cus"
+					+ " and (inv.activeStatus is null or inv.activeStatus <> 0)", InvoiceDetails.class)
+					.setParameter("cus", customerId).getResultList();
+			if (customer == null && candidates.isEmpty()) {
+				throw new IllegalArgumentException("Customer not found");
+			}
+		}
+		List<InvoiceDetails> open = candidates.stream().filter(inv -> inv.getOutstanding() > OPEN)
+				.sorted(Comparator.comparing(InvoiceDetails::getInvoicedDate, Comparator.nullsLast(Comparator.naturalOrder()))
+						.thenComparingInt(InvoiceDetails::getInvID))
+				.toList();
+		Set<Integer> selectedIds = request.getInvIds() == null ? Set.of()
+				: request.getInvIds().stream().filter(id -> id != null).collect(Collectors.toCollection(HashSet::new));
+		List<InvoiceDetails> targets;
+		if (selectedIds.isEmpty()) {
+			targets = open;
+		} else {
+			targets = open.stream().filter(inv -> selectedIds.contains(inv.getInvID())).toList();
+			if (targets.size() != selectedIds.size()) {
+				throw new IllegalArgumentException("One or more selected bills are not open for this customer");
+			}
+		}
+		if (targets.isEmpty()) {
+			throw new IllegalArgumentException("No open bills to collect against");
+		}
+
+		Map<String, PaymentMode> modes = new LinkedHashMap<>();
+		for (PaymentMode mode : paymentModeRepo.findActivePaymentMode()) {
+			if (mode.getPaymentMode() != null && !mode.getPaymentMode().isBlank()) {
+				modes.put(mode.getPaymentMode().trim().toLowerCase(Locale.ROOT), mode);
+			}
+		}
+		List<CollectCreditRequest.Part> rawParts = request.getParts() == null ? List.of() : request.getParts();
+		List<CollectCreditRequest.Part> parts = new ArrayList<>();
+		Set<String> usedModes = new HashSet<>();
+		double amount = 0;
+		for (CollectCreditRequest.Part part : rawParts) {
+			double partAmount = round2(part.getAmount());
+			if (partAmount < 0) {
+				throw new IllegalArgumentException("Amount cannot be negative");
+			}
+			if (partAmount <= 0) {
+				continue;
+			}
+			PaymentMode mode = BillingServiceImpl.resolvePaymentMode(modes, part.getPayMode(), part.getCardType());
+			if (!usedModes.add(mode.getPaymentMode().toLowerCase(Locale.ROOT))) {
+				throw new IllegalArgumentException("Each payment method can only be used once per payment");
+			}
+			CollectCreditRequest.Part normalised = new CollectCreditRequest.Part(mode.getPaymentMode(), partAmount);
+			normalised.setCardType(part.getCardType());
+			parts.add(normalised);
+			amount = round2(amount + partAmount);
+		}
+		if (amount <= 0) {
+			throw new IllegalArgumentException("Enter an amount to collect");
+		}
+		double selectable = round2(targets.stream().mapToDouble(InvoiceDetails::getOutstanding).sum());
+		if (amount > selectable + MONEY_TOLERANCE) {
+			throw new IllegalArgumentException("Amount is more than the selected balance of " + money(selectable));
+		}
+
+		// Consume payment parts while walking bills oldest first.
+		record Remaining(String payMode, double left) {
+		}
+		List<Remaining> pool = parts.stream().map(p -> new Remaining(p.getPayMode(), p.getAmount()))
+				.collect(Collectors.toCollection(ArrayList::new));
+		Long shiftId = shiftService.openShiftIdHere();
+		Date now = new Date();
+		List<BillPayment> billPayments = new ArrayList<>();
+		List<PaymentLine> paymentLines = new ArrayList<>();
+		Map<String, BigDecimal> modeTotals = new LinkedHashMap<>();
+
+		for (InvoiceDetails inv : targets) {
+			double need = round2(inv.getOutstanding());
+			if (need <= OPEN) {
+				continue;
+			}
+			double apply = 0;
+			List<ModeTotal> billParts = new ArrayList<>();
+			for (int i = 0; i < pool.size() && need > OPEN; i++) {
+				Remaining rem = pool.get(i);
+				if (rem.left() <= OPEN) {
+					continue;
+				}
+				double take = round2(Math.min(rem.left(), need));
+				if (take <= OPEN) {
+					continue;
+				}
+				pool.set(i, new Remaining(rem.payMode(), round2(rem.left() - take)));
+				need = round2(need - take);
+				apply = round2(apply + take);
+
+				PaymentDetails pay = new PaymentDetails();
+				pay.setInvoiceNumber(inv.getInvoiceNumber());
+				pay.setPaidAmount(take);
+				pay.setPayDate(now);
+				pay.setPaidMode(rem.payMode());
+				pay.setPaySource(PaymentDetails.SOURCE_CREDIT);
+				pay.setShiftId(shiftId);
+				CommonUtills.addDefaultCreateInfos(pay, pay.getClass(), globalInfo);
+				paymentRepo.save(pay);
+				pay.setReceiptNumber(outletSequenceService.next(OutletSequenceService.PAYMENT));
+				paymentRepo.save(pay);
+
+				billParts.add(new ModeTotal(rem.payMode(), money(take)));
+				modeTotals.merge(rem.payMode(), money(take), BigDecimal::add);
+				paymentLines.add(new PaymentLine(pay.getPayID(), pay.getReceiptNumber(), inv.getInvID(),
+						inv.getReceiptNo(), rem.payMode(), money(take)));
+			}
+			if (apply <= OPEN) {
+				break;
+			}
+			inv.setPaidAmount(round2(inv.getPaidAmount() + apply));
+			inv.setOutstanding(round2(Math.max(inv.getInvoicedAmount() - inv.getPaidAmount(), 0)));
+			CommonUtills.addDefaultUpdateInfos(inv, inv.getClass(), globalInfo);
+			em.merge(inv);
+			billPayments.add(new BillPayment(inv.getInvID(), inv.getReceiptNo(), money(apply),
+					money(inv.getOutstanding()), billParts));
+		}
+
+		BigDecimal remaining = openBillsFor(customerId).stream().map(inv -> money(inv.getOutstanding()))
+				.reduce(money(0), BigDecimal::add);
+		List<ModeTotal> modeList = modeTotals.entrySet().stream()
+				.map(e -> new ModeTotal(e.getKey(), e.getValue())).toList();
+		return new CollectResult(customerId, name(customerId, customer), customer == null ? null : customer.getMobileNo(),
+				money(amount), remaining, modeList, billPayments, paymentLines, now.toInstant().toString(),
+				globalInfo == null ? null : globalInfo.getUserName());
+	}
+
 	// ---- Helpers ----
+
+	private List<InvoiceDetails> openBillsFor(int customerId) {
+		if (customerId == WALK_IN) {
+			return openBills().stream().filter(inv -> inv.getCusID() <= 0).toList();
+		}
+		return em.createQuery("from InvoiceDetails inv where inv.cusID = :cus and inv.outstanding > :open"
+				+ " and (inv.activeStatus is null or inv.activeStatus <> 0)", InvoiceDetails.class)
+				.setParameter("cus", customerId).setParameter("open", OPEN).getResultList();
+	}
+
+	private static double round2(double value) {
+		return Math.round(value * 100.0) / 100.0;
+	}
 
 	private List<InvoiceDetails> openBills() {
 		return em.createQuery("from InvoiceDetails inv where inv.outstanding > :open"

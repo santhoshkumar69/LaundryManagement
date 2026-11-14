@@ -30,9 +30,9 @@ public interface ShiftRepo extends JpaRepository<Shift, Long> {
 			+ " and lower(trim(p.paidMode)) = 'cash' and (p.paySource is null or p.paySource <> 'DELIVERY')")
 	Double billCash(@Param("shiftId") Long shiftId);
 
-	/** Cash taken on the Delivery screen during the shift (each part of a split payment is its own row). */
+	/** Cash taken on Delivery or Credit List collect during the shift (each part of a split is its own row). */
 	@Query("select coalesce(sum(p.paidAmount), 0) from PaymentDetails p where p.shiftId = :shiftId"
-			+ " and lower(trim(p.paidMode)) = 'cash' and p.paySource = 'DELIVERY'")
+			+ " and lower(trim(p.paidMode)) = 'cash' and p.paySource in ('DELIVERY', 'CREDIT')")
 	Double deliveryCash(@Param("shiftId") Long shiftId);
 
 	/** Cash payments recalled during the shift, whenever they were taken. */

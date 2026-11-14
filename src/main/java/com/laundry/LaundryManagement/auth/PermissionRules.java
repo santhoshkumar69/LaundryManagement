@@ -75,10 +75,11 @@ final class PermissionRules {
 		rule("/expenses/save", "EXPENSES.CREATE", "EXPENSES.EDIT");
 		rule("/expenses/delete", "EXPENSES.DELETE");
 
-		// Credit balances are financial records, so reading them needs View.
+		// Credit balances are financial records, so reading them needs View; collecting needs Edit.
 		rule("/credit/list", "CREDIT_LIST.VIEW");
 		rule("/credit/customer", "CREDIT_LIST.VIEW");
 		rule("/credit/export", "CREDIT_LIST.VIEW");
+		rule("/credit/collect", "CREDIT_LIST.EDIT");
 
 		// Cashiers start and end their own shifts; the report and force-ending are for supervisors.
 		rule("/shifts/report", "SHIFTS.VIEW");
@@ -88,6 +89,27 @@ final class PermissionRules {
 		rule("/invoiceTemplate/save", "INVOICE_TEMPLATE.CREATE", "INVOICE_TEMPLATE.EDIT");
 		rule("/invoiceTemplate/apply", "INVOICE_TEMPLATE.EDIT");
 		rule("/invoiceTemplate/delete", "INVOICE_TEMPLATE.DELETE");
+
+		// Accounts & Reports: one View permission per report family.
+		rule("/reports/outlets", "DAILY_SALES.VIEW", "GENERAL_REPORTS.VIEW", "CREDIT_REPORTS.VIEW", "VOID_REPORTS.VIEW");
+		rule("/reports/daily", "DAILY_SALES.VIEW");
+		rule("/reports/daily/export", "DAILY_SALES.VIEW");
+		rule("/reports/sales", "GENERAL_REPORTS.VIEW");
+		rule("/reports/sales/export", "GENERAL_REPORTS.VIEW");
+		rule("/reports/items", "GENERAL_REPORTS.VIEW");
+		rule("/reports/items/export", "GENERAL_REPORTS.VIEW");
+		rule("/reports/operations", "GENERAL_REPORTS.VIEW");
+		rule("/reports/operations/export", "GENERAL_REPORTS.VIEW");
+		rule("/reports/pl", "GENERAL_REPORTS.VIEW");
+		rule("/reports/pl/export", "GENERAL_REPORTS.VIEW");
+		rule("/reports/expenses/export", "GENERAL_REPORTS.VIEW", "EXPENSES.VIEW");
+		rule("/reports/credit/aging", "CREDIT_REPORTS.VIEW");
+		rule("/reports/credit/aging/export", "CREDIT_REPORTS.VIEW");
+		rule("/reports/credit/collections", "CREDIT_REPORTS.VIEW");
+		rule("/reports/credit/collections/export", "CREDIT_REPORTS.VIEW");
+		rule("/reports/credit/statement/export", "CREDIT_REPORTS.VIEW");
+		rule("/reports/recalls", "VOID_REPORTS.VIEW");
+		rule("/reports/recalls/export", "VOID_REPORTS.VIEW");
 	}
 
 	private PermissionRules() {

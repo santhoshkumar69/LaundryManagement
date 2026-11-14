@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -43,12 +44,14 @@ import com.laundry.LaundryManagement.model.GlobalInfo;
 import com.laundry.LaundryManagement.model.InvoiceDetails;
 import com.laundry.LaundryManagement.model.ItemMasterPriceDetails;
 import com.laundry.LaundryManagement.model.PaymentDetails;
+import com.laundry.LaundryManagement.model.PaymentMode;
 import com.laundry.LaundryManagement.repository.BilledComponetRepository;
 import com.laundry.LaundryManagement.repository.CustomerInfoRepo;
 import com.laundry.LaundryManagement.repository.EstimationRepository;
 import com.laundry.LaundryManagement.repository.InvoiceDetailRepository;
 import com.laundry.LaundryManagement.repository.ItemMasterPriceDetailsRepo;
 import com.laundry.LaundryManagement.repository.ItemMasterRepo;
+import com.laundry.LaundryManagement.repository.PaymentModeRepo;
 import com.laundry.LaundryManagement.repository.PaymentRepository;
 
 /**
@@ -72,7 +75,6 @@ public class BillingServiceImpl implements BillingService {
 	public static final String PAY_RECALLED = "RECALLED";
 	private static final List<String> ORDER_STATUSES = Arrays.asList(ORDER_PLACED, UNDER_PROCESSING,
 			READY_TO_DELIVER, COLLECTED);
-	private static final List<String> PAYMENT_MODES = Arrays.asList("Cash", "Card");
 	private static final double MONEY_TOLERANCE = 0.005;
 
 	@Autowired
@@ -93,6 +95,8 @@ public class BillingServiceImpl implements BillingService {
 	CustomerInfoRepo customRepo;
 	@Autowired
 	OutletSequenceService outletSequenceService;
+	@Autowired
+	PaymentModeRepo paymentModeRepo;
 
 	@Override
 	@Transactional
@@ -341,8 +345,8 @@ public class BillingServiceImpl implements BillingService {
 			dashboard.setBillsToday(((Number) row[0]).longValue());
 			dashboard.setBilledToday(round2(((Number) row[1]).doubleValue()));
 		}
-		for (String mode : PAYMENT_MODES) {
-			dashboard.getReceivedToday().put(mode, 0.0);
+		for (PaymentMode mode : paymentModeRepo.findActivePaymentMode()) {
+			dashboard.getReceivedToday().put(mode.getPaymentMode(), 0.0);
 		}
 		for (Object[] row : paymentRepo.sumReceivedByModeBetween(today, tomorrow)) {
 			String mode = row[0] == null ? "Other" : (String) row[0];
@@ -441,6 +445,7 @@ public class BillingServiceImpl implements BillingService {
 		List<PayOrderRequest.Part> parts = request.getParts() != null && !request.getParts().isEmpty()
 				? request.getParts()
 				: Arrays.asList(new PayOrderRequest.Part(request.getPayMode(), request.getAmount()));
+		Map<String, PaymentMode> modes = activePaymentModes();
 		Set<String> usedModes = new HashSet<String>();
 		double amount = 0;
 		for (PayOrderRequest.Part part : parts) {
@@ -449,10 +454,9 @@ public class BillingServiceImpl implements BillingService {
 				throw new IllegalArgumentException("Amount cannot be negative");
 			}
 			if (partAmount > 0) {
-				if (!PAYMENT_MODES.contains(part.getPayMode())) {
-					throw new IllegalArgumentException("Payment method must be Cash or Card");
-				}
-				if (!usedModes.add(part.getPayMode())) {
+				PaymentMode mode = resolvePaymentMode(modes, part.getPayMode(), part.getCardType());
+				part.setPayMode(mode.getPaymentMode());
+				if (!usedModes.add(mode.getPaymentMode().toLowerCase(Locale.ROOT))) {
 					throw new IllegalArgumentException("Each payment method can only be used once per payment");
 				}
 			}
@@ -690,6 +694,33 @@ public class BillingServiceImpl implements BillingService {
 
 	private static double round2(double value) {
 		return Math.round(value * 100.0) / 100.0;
+	}
+
+	/** Active payment modes of the current outlet, keyed by lower-case name. */
+	private Map<String, PaymentMode> activePaymentModes() {
+		Map<String, PaymentMode> modes = new LinkedHashMap<>();
+		for (PaymentMode mode : paymentModeRepo.findActivePaymentMode()) {
+			if (mode.getPaymentMode() != null && !mode.getPaymentMode().isBlank()) {
+				modes.put(mode.getPaymentMode().trim().toLowerCase(Locale.ROOT), mode);
+			}
+		}
+		return modes;
+	}
+
+	/** Resolves a requested mode name to an active outlet mode; requires card type when the mode asks for one. */
+	static PaymentMode resolvePaymentMode(Map<String, PaymentMode> modes, String payMode, String cardType) {
+		String key = payMode == null ? "" : payMode.trim().toLowerCase(Locale.ROOT);
+		PaymentMode mode = modes.get(key);
+		if (mode == null) {
+			throw new IllegalArgumentException(
+					modes.isEmpty() ? "This outlet has no payment methods set up"
+							: "Payment method must be one of: " + String.join(", ",
+									modes.values().stream().map(PaymentMode::getPaymentMode).toList()));
+		}
+		if (mode.isNeedsCardType() && (cardType == null || cardType.isBlank())) {
+			throw new IllegalArgumentException("Choose a card type for " + mode.getPaymentMode());
+		}
+		return mode;
 	}
 
 	private OrderStatusDto toOrderStatus(InvoiceDetails inv, Map<Integer, CustomerInfo> customers) {
