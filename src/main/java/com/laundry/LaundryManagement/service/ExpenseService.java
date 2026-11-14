@@ -3,11 +3,9 @@ package com.laundry.LaundryManagement.service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -18,32 +16,33 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.laundry.LaundryManagement.auth.RequestScope;
 import com.laundry.LaundryManagement.model.Expense;
+import com.laundry.LaundryManagement.model.ExpenseCategory;
+import com.laundry.LaundryManagement.model.ExpenseSubcategory;
 import com.laundry.LaundryManagement.model.PaymentMode;
 import com.laundry.LaundryManagement.repository.ExpenseRepo;
 import com.laundry.LaundryManagement.repository.PaymentModeRepo;
 
 /**
  * Expense Track: an outlet's spending entries, totals and per-category subtotals. Categories and subcategories are
- * whatever the outlet has used so far; a new one is created by simply using it.
+ * chosen from the outlet's managed lists (Expense Categories).
  */
 @Service
 public class ExpenseService {
 
 	private static final int MAX_NAME_LENGTH = 100;
-	private static final int MAX_CATEGORY_LENGTH = 100;
 	private static final int MAX_RECEIPT_LENGTH = 50;
 	private static final BigDecimal MAX_AMOUNT = new BigDecimal("9999999999.99");
 	/** Subtotal key for entries saved before subcategories existed. */
 	public static final String NO_SUBCATEGORY = "Not set";
 
 	/** Dates are ISO strings (yyyy-MM-dd) so the JSON does not depend on Jackson's date settings. */
-	public record ExpenseRow(Long id, String expenseDate, String expenseName, String category, String subcategory,
-			BigDecimal amount, String receiptNo, Long paymentModeId, String paymentMode, String createdBy,
-			String createdByLogin) {
+	public record ExpenseRow(Long id, String expenseDate, String expenseName, Long categoryId, String category,
+			Long subcategoryId, String subcategory, BigDecimal amount, String receiptNo, Long paymentModeId,
+			String paymentMode, String createdBy, String createdByLogin) {
 		static ExpenseRow of(Expense e) {
-			return new ExpenseRow(e.getId(), e.getExpenseDate().toString(), e.getExpenseName(), e.getCategory(),
-					e.getSubcategory(), e.getAmount(), e.getReceiptNo(), e.getPaymentModeId(), e.getPaymentMode(),
-					e.getCreatedBy(), e.getCreatedByLogin());
+			return new ExpenseRow(e.getId(), e.getExpenseDate().toString(), e.getExpenseName(), e.getCategoryId(),
+					e.getCategory(), e.getSubcategoryId(), e.getSubcategory(), e.getAmount(), e.getReceiptNo(),
+					e.getPaymentModeId(), e.getPaymentMode(), e.getCreatedBy(), e.getCreatedByLogin());
 		}
 	}
 
@@ -52,17 +51,20 @@ public class ExpenseService {
 	}
 
 	/** createdBy is not accepted here: it always comes from the signed-in user. */
-	public record SaveExpenseRequest(Long id, String expenseDate, String expenseName, String category,
-			String subcategory, BigDecimal amount, String receiptNo, Long paymentModeId, String paymentMode) {
+	public record SaveExpenseRequest(Long id, String expenseDate, String expenseName, Long categoryId,
+			Long subcategoryId, BigDecimal amount, String receiptNo, Long paymentModeId, String paymentMode) {
 	}
 
-	public record CategoryOption(String name, List<String> subcategories) {
+	public record Option(Long id, String name) {
+	}
+
+	public record CategoryOption(Long id, String name, List<Option> subcategories) {
 	}
 
 	public record PaymentModeOption(Long id, String name, boolean isDefault) {
 	}
 
-	/** Suggestions for the expense form and the category filter. */
+	/** Choices for the expense form and the category filter: active categories and payment modes only. */
 	public record ExpenseOptions(List<CategoryOption> categories, List<PaymentModeOption> paymentModes,
 			String defaultPaymentMode) {
 	}
@@ -73,14 +75,18 @@ public class ExpenseService {
 	@Autowired
 	private PaymentModeRepo paymentModeRepo;
 
+	@Autowired
+	private ExpenseCategoryService categoryService;
+
 	/** Defaults to the current month when no dates are given. */
-	public ExpenseList list(String from, String to, String category) {
+	public ExpenseList list(String from, String to, Long categoryId, String category) {
 		LocalDate start = isBlank(from) ? LocalDate.now().withDayOfMonth(1) : date(from, "From date");
 		LocalDate end = isBlank(to) ? start.withDayOfMonth(start.lengthOfMonth()) : date(to, "To date");
 		if (end.isBefore(start)) {
 			throw new IllegalArgumentException("To date must be on or after From date");
 		}
-		List<Expense> expenses = expenseRepo.findLive(start, end, isBlank(category) ? null : category.trim());
+		List<Expense> expenses = expenseRepo.findLive(start, end, categoryId,
+				isBlank(category) ? null : category.trim());
 		Map<String, BigDecimal> byCategory = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 		Map<String, Map<String, BigDecimal>> bySubcategory = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 		BigDecimal total = BigDecimal.ZERO;
@@ -95,10 +101,11 @@ public class ExpenseService {
 				total, new LinkedHashMap<>(byCategory), new LinkedHashMap<>(bySubcategory));
 	}
 
-	/** Categories (each with its subcategories) used in this outlet, plus its active payment modes. */
 	public ExpenseOptions options() {
-		List<CategoryOption> categories = knownCategories(null).values().stream()
-				.map(c -> new CategoryOption(c.name, new ArrayList<>(c.subcategories.values()))).toList();
+		List<CategoryOption> categories = categoryService.list(false).stream()
+				.map(c -> new CategoryOption(c.id(), c.name(),
+						c.subcategories().stream().map(s -> new Option(s.id(), s.name())).toList()))
+				.toList();
 		List<PaymentModeOption> modes = paymentModeRepo.findActivePaymentMode().stream()
 				.map(m -> new PaymentModeOption(m.getId(), m.getPaymentMode(), m.isDefaultMode())).toList();
 		String defaultMode = modes.stream().filter(PaymentModeOption::isDefault).map(PaymentModeOption::name)
@@ -107,7 +114,7 @@ public class ExpenseService {
 	}
 
 	public List<String> categoryNames() {
-		return knownCategories(null).values().stream().map(c -> c.name).toList();
+		return categoryService.list(false).stream().map(ExpenseCategoryService.CategoryView::name).toList();
 	}
 
 	@Transactional
@@ -120,8 +127,12 @@ public class ExpenseService {
 		}
 		LocalDate date = date(request.expenseDate(), "Date");
 		String name = text(request.expenseName(), "Expense name", MAX_NAME_LENGTH, true);
-		String category = text(request.category(), "Category", MAX_CATEGORY_LENGTH, true);
-		String subcategory = text(request.subcategory(), "Subcategory", MAX_CATEGORY_LENGTH, true);
+		if (request.categoryId() == null) {
+			throw new IllegalArgumentException("Category is required");
+		}
+		if (request.subcategoryId() == null) {
+			throw new IllegalArgumentException("Subcategory is required");
+		}
 		BigDecimal amount = request.amount();
 		if (amount == null) {
 			throw new IllegalArgumentException("Amount is required");
@@ -149,18 +160,10 @@ public class ExpenseService {
 			expense.setUpdatedBy(user.userName());
 			expense.setUpdatedDate(new Date());
 		}
+		applyCategory(expense, request.categoryId(), request.subcategoryId());
 		applyPaymentMode(expense, request.paymentModeId(), request.paymentMode());
-
-		// Reuse the casing the outlet already uses, so "rent" and "Rent" stay one category.
-		KnownCategory known = knownCategories(expense.getId()).get(key(category));
-		if (known != null) {
-			category = known.name;
-			subcategory = known.subcategories.getOrDefault(key(subcategory), subcategory);
-		}
 		expense.setExpenseDate(date);
 		expense.setExpenseName(name);
-		expense.setCategory(category);
-		expense.setSubcategory(subcategory);
 		expense.setAmount(amount.setScale(2));
 		expense.setReceiptNo(receiptNo);
 		return ExpenseRow.of(expenseRepo.save(expense));
@@ -174,6 +177,28 @@ public class ExpenseService {
 		expense.setUpdatedBy(RequestScope.require().userName());
 		expense.setUpdatedDate(new Date());
 		expenseRepo.save(expense);
+	}
+
+	/**
+	 * Category and subcategory must be the outlet's own and active, and the subcategory must sit under the category.
+	 * An entry may keep a category or subcategory that was deleted after it was recorded.
+	 */
+	private void applyCategory(Expense expense, Long categoryId, Long subcategoryId) {
+		ExpenseCategory category = categoryService.category(categoryId);
+		if (category.getActiveStatus() != 1 && !Objects.equals(categoryId, expense.getCategoryId())) {
+			throw new IllegalArgumentException("The category \"" + category.getName() + "\" has been deleted");
+		}
+		ExpenseSubcategory subcategory = categoryService.subcategory(subcategoryId);
+		if (!Objects.equals(subcategory.getCategoryId(), category.getId())) {
+			throw new IllegalArgumentException("The subcategory does not belong to \"" + category.getName() + "\"");
+		}
+		if (subcategory.getActiveStatus() != 1 && !Objects.equals(subcategoryId, expense.getSubcategoryId())) {
+			throw new IllegalArgumentException("The subcategory \"" + subcategory.getName() + "\" has been deleted");
+		}
+		expense.setCategoryId(category.getId());
+		expense.setCategory(category.getName());
+		expense.setSubcategoryId(subcategory.getId());
+		expense.setSubcategory(subcategory.getName());
 	}
 
 	/**
@@ -202,45 +227,6 @@ public class ExpenseService {
 		}
 	}
 
-	private static final class KnownCategory {
-		final String name;
-		final Map<String, String> subcategories = new LinkedHashMap<>();
-
-		KnownCategory(String name) {
-			this.name = name;
-		}
-	}
-
-	/** Categories by lower-case key, keeping the first-used casing; skips the entry being edited. */
-	private Map<String, KnownCategory> knownCategories(Long excludeId) {
-		Map<String, KnownCategory> known = new LinkedHashMap<>();
-		for (Object[] row : expenseRepo.findCategoryPairs()) {
-			if (excludeId != null && Objects.equals(excludeId, row[0])) {
-				continue;
-			}
-			String category = (String) row[1];
-			String sub = (String) row[2];
-			if (isBlank(category)) {
-				continue;
-			}
-			KnownCategory entry = known.computeIfAbsent(key(category), k -> new KnownCategory(category.trim()));
-			if (!isBlank(sub)) {
-				entry.subcategories.putIfAbsent(key(sub), sub.trim());
-			}
-		}
-		List<Map.Entry<String, KnownCategory>> sorted = new ArrayList<>(known.entrySet());
-		sorted.sort(Map.Entry.comparingByKey());
-		Map<String, KnownCategory> result = new LinkedHashMap<>();
-		for (Map.Entry<String, KnownCategory> e : sorted) {
-			List<Map.Entry<String, String>> subs = new ArrayList<>(e.getValue().subcategories.entrySet());
-			subs.sort(Map.Entry.comparingByKey());
-			e.getValue().subcategories.clear();
-			subs.forEach(s -> e.getValue().subcategories.put(s.getKey(), s.getValue()));
-			result.put(e.getKey(), e.getValue());
-		}
-		return result;
-	}
-
 	/** An existing, not deleted expense of the current outlet (other outlets' rows are filtered out). */
 	private Expense live(long id) {
 		Expense expense = expenseRepo.findById(id).orElse(null);
@@ -262,10 +248,6 @@ public class ExpenseService {
 			throw new IllegalArgumentException(label + " can be at most " + maxLength + " characters");
 		}
 		return trimmed;
-	}
-
-	private static String key(String value) {
-		return value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
 	}
 
 	private static LocalDate date(String value, String label) {

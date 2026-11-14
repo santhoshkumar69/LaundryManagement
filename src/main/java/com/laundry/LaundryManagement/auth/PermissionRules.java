@@ -65,6 +65,13 @@ final class PermissionRules {
 		rule("/expenses/list", "EXPENSES.VIEW");
 		rule("/expenses/categories", "EXPENSES.VIEW", "EXPENSES.CREATE", "EXPENSES.EDIT");
 		rule("/expenses/options", "EXPENSES.VIEW", "EXPENSES.CREATE", "EXPENSES.EDIT");
+		rule("/expenseCategories/list", "EXPENSE_CATEGORIES.VIEW");
+		rule("/expenseCategories/saveCategory", "EXPENSE_CATEGORIES.CREATE", "EXPENSE_CATEGORIES.EDIT");
+		rule("/expenseCategories/saveSubcategory", "EXPENSE_CATEGORIES.CREATE", "EXPENSE_CATEGORIES.EDIT");
+		rule("/expenseCategories/deleteCategory", "EXPENSE_CATEGORIES.DELETE");
+		rule("/expenseCategories/restoreCategory", "EXPENSE_CATEGORIES.DELETE");
+		rule("/expenseCategories/deleteSubcategory", "EXPENSE_CATEGORIES.DELETE");
+		rule("/expenseCategories/restoreSubcategory", "EXPENSE_CATEGORIES.DELETE");
 		rule("/expenses/save", "EXPENSES.CREATE", "EXPENSES.EDIT");
 		rule("/expenses/delete", "EXPENSES.DELETE");
 

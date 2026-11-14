@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.laundry.LaundryManagement.auth.RequestScope;
 import com.laundry.LaundryManagement.model.Discounts;
+import com.laundry.LaundryManagement.model.ExpenseCategory;
+import com.laundry.LaundryManagement.model.ExpenseSubcategory;
 import com.laundry.LaundryManagement.model.ExtraCharges;
 import com.laundry.LaundryManagement.model.InvoiceTemplate;
 import com.laundry.LaundryManagement.model.ItemCategory;
@@ -54,7 +56,7 @@ public class OutletAdminService {
 	}
 
 	public record CopySummary(int categories, int units, int laundryTypes, int items, int prices, int extraCharges,
-			int discounts, int paymentModes) {
+			int discounts, int paymentModes, int expenseCategories, int expenseSubcategories) {
 	}
 
 	public record CreateOutletResult(OutletSummary outlet, CopySummary copied) {
@@ -217,8 +219,8 @@ public class OutletAdminService {
 	}
 
 	/**
-	 * Copies active categories, units, laundry types, items, prices, extra charges and discounts, remapping the
-	 * IDs that link them.
+	 * Copies active categories, units, laundry types, items, prices, extra charges, discounts, payment modes and
+	 * expense categories with their subcategories, remapping the IDs that link them.
 	 */
 	private CopySummary copyItemConfiguration(int fromOutletId, int toOutletId) {
 		List<ItemCategory> categories = RequestScope.asOutlet(fromOutletId,
@@ -237,6 +239,12 @@ public class OutletAdminService {
 				() -> em.createQuery("from Discounts d where d.activeStatus = 1", Discounts.class).getResultList());
 		List<PaymentMode> paymentModes = RequestScope.asOutlet(fromOutletId,
 				() -> em.createQuery("from PaymentMode p where p.activeStatus = 1", PaymentMode.class).getResultList());
+		List<ExpenseCategory> expenseCategories = RequestScope.asOutlet(fromOutletId,
+				() -> em.createQuery("from ExpenseCategory c where c.activeStatus = 1", ExpenseCategory.class)
+						.getResultList());
+		List<ExpenseSubcategory> expenseSubcategories = RequestScope.asOutlet(fromOutletId,
+				() -> em.createQuery("from ExpenseSubcategory s where s.activeStatus = 1", ExpenseSubcategory.class)
+						.getResultList());
 
 		return RequestScope.asOutlet(toOutletId, () -> {
 			Map<Integer, Integer> categoryIds = new HashMap<>();
@@ -298,9 +306,27 @@ public class OutletAdminService {
 			for (PaymentMode source : paymentModes) {
 				em.persist(copyOf(source));
 			}
+			Map<Long, Long> expenseCategoryIds = new HashMap<>();
+			for (ExpenseCategory source : expenseCategories) {
+				ExpenseCategory copy = copyOf(source);
+				em.persist(copy);
+				expenseCategoryIds.put(source.getId(), copy.getId());
+			}
+			int subcategoryCount = 0;
+			for (ExpenseSubcategory source : expenseSubcategories) {
+				Long categoryId = expenseCategoryIds.get(source.getCategoryId());
+				if (categoryId == null) {
+					continue;
+				}
+				ExpenseSubcategory copy = copyOf(source);
+				copy.setCategoryId(categoryId);
+				em.persist(copy);
+				subcategoryCount++;
+			}
 			em.flush();
 			return new CopySummary(categoryIds.size(), unitIds.size(), washingTypeIds.size(), copiedItems.size(),
-					priceCount, extraCharges.size(), discounts.size(), paymentModes.size());
+					priceCount, extraCharges.size(), discounts.size(), paymentModes.size(), expenseCategoryIds.size(),
+					subcategoryCount);
 		});
 	}
 

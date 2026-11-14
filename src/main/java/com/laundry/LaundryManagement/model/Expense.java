@@ -47,8 +47,16 @@ public class Expense implements Serializable {
 	@Column(name = "EXPENSE_NAME", nullable = false, length = 100)
 	private String expenseName;
 
+	/** The managed category (Expense Categories); null only on entries made before categories were managed. */
+	@Column(name = "CATEGORY_ID")
+	private Long categoryId;
+
+	/** The category's current name, kept in step when it is renamed. */
 	@Column(name = "CATEGORY", nullable = false, length = 100)
 	private String category;
+
+	@Column(name = "SUBCATEGORY_ID")
+	private Long subcategoryId;
 
 	/** Required on new and edited entries; entries made before subcategories existed have none. */
 	@Column(name = "SUBCATEGORY", length = 100)

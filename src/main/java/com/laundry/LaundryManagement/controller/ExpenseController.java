@@ -41,8 +41,9 @@ public class ExpenseController {
 	@GetMapping("/list")
 	public ResponseEntity<Object> list(@RequestParam(value = "from", required = false) String from,
 			@RequestParam(value = "to", required = false) String to,
+			@RequestParam(value = "categoryId", required = false) Long categoryId,
 			@RequestParam(value = "category", required = false) String category) {
-		return ResponseEntity.ok(expenseService.list(from, to, category));
+		return ResponseEntity.ok(expenseService.list(from, to, categoryId, category));
 	}
 
 	@PostMapping("/save")
