@@ -4,6 +4,8 @@ import com.laundry.LaundryManagement.auth.RequestScope;
 
 
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import jakarta.servlet.http.HttpSession;
@@ -16,6 +18,8 @@ import com.laundry.LaundryManagement.dto.ReturnResponse;
 import com.laundry.LaundryManagement.model.CustomerInfo;
 import com.laundry.LaundryManagement.model.GlobalInfo;
 import com.laundry.LaundryManagement.service.CustomerInfoService;
+import com.laundry.LaundryManagement.service.MandatoryFields;
+import com.laundry.LaundryManagement.service.OutletMandatoryFields;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -34,8 +38,18 @@ public class ClientController {
 	@Autowired
     CustomerInfoService customerInfoService;
 
+	@Autowired
+	private OutletMandatoryFields outletMandatoryFields;
+
 	@PostMapping("/createCustomerInfo")
 	public ResponseEntity<Object> createCustomerDetails(@RequestBody CustomerInfo customerInfo, HttpSession httpSession) {
+		List<String> missing = outletMandatoryFields.missing(Map.of(
+				MandatoryFields.CUSTOMER_NAME, OutletMandatoryFields.value(customerInfo.getCustomerName()),
+				MandatoryFields.CUSTOMER_REMARKS, OutletMandatoryFields.value(customerInfo.getRemarks()),
+				MandatoryFields.CUSTOMER_ADDRESS, OutletMandatoryFields.value(customerInfo.getAddress())));
+		if (!missing.isEmpty()) {
+			return ResponseEntity.badRequest().body(new ReturnResponse(MandatoryFields.message(missing), 400));
+		}
 		CommonUtills.addDefaultCreateInfos(customerInfo, customerInfo.getClass(),RequestScope.globalInfo());
 		
 		CustomerInfo acustomerInfo=null;

@@ -3,6 +3,7 @@ package com.laundry.LaundryManagement.controller;
 import com.laundry.LaundryManagement.auth.RequestScope;
 
 import java.util.List;
+import java.util.Map;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -10,7 +11,9 @@ import com.laundry.LaundryManagement.constant.AppConstants;
 import com.laundry.LaundryManagement.model.CustomerInfo;
 import com.laundry.LaundryManagement.model.GlobalInfo;
 import com.laundry.LaundryManagement.service.BillingService;
+import com.laundry.LaundryManagement.service.MandatoryFields;
 import com.laundry.LaundryManagement.service.MasterService;
+import com.laundry.LaundryManagement.service.OutletMandatoryFields;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -52,6 +55,9 @@ public class BillingController {
 
 	@Autowired
     MasterService masterService;
+
+	@Autowired
+	private OutletMandatoryFields outletMandatoryFields;
 	
 	@Autowired
     BillingService billingService;
@@ -78,6 +84,13 @@ public class BillingController {
 	
 	@PostMapping("/confirmBilling")
 	public ResponseEntity<?> confirmBillingDetails(@RequestBody ConfirmBilling confirmBill, HttpSession httpSession) {
+		List<String> missing = outletMandatoryFields.missing(Map.of(
+				MandatoryFields.DELIVERY_DATE, OutletMandatoryFields.value(confirmBill.getDeliveryDate()),
+				MandatoryFields.DELIVERY_ADDRESS, OutletMandatoryFields.value(confirmBill.getDeliveryAddress()),
+				MandatoryFields.PICKUP_TYPE, OutletMandatoryFields.value(confirmBill.getPickupType())));
+		if (!missing.isEmpty()) {
+			return ResponseEntity.badRequest().body(new ReturnResponse(MandatoryFields.message(missing), 400));
+		}
 		ReceiptDetailDto receiptInfo = billingService.confirmBillingRequest(confirmBill, RequestScope.globalInfo());
 		return ResponseEntity.ok().body(receiptInfo);
 	}

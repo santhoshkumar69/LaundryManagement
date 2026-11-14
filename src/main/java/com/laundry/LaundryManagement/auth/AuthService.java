@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+
+import com.laundry.LaundryManagement.service.MandatoryFields;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,9 +24,11 @@ import com.laundry.LaundryManagement.repository.UserOutletRepo;
 @Service
 public class AuthService {
 
-	public record OutletOption(Integer id, String outletCode, String outletName) {
+	/** mandatoryFields: billing and customer fields the outlet requires (see MandatoryFields). */
+	public record OutletOption(Integer id, String outletCode, String outletName, List<String> mandatoryFields) {
 		static OutletOption of(OutletDetails outlet) {
-			return new OutletOption(outlet.getId(), outlet.getOutletCode(), outlet.getOutletName());
+			return new OutletOption(outlet.getId(), outlet.getOutletCode(), outlet.getOutletName(),
+					MandatoryFields.parse(outlet.getMandatoryFields()));
 		}
 	}
 

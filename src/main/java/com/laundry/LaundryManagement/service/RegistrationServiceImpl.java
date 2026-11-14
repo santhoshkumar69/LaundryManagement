@@ -283,6 +283,7 @@ public class RegistrationServiceImpl implements RegistrationService {
 		settings.setRegNo2(outlet.getRegNo2());
 		settings.setLogoData(outlet.getLogoData());
 		settings.setInvoiceTemplateId(outlet.getInvoiceTemplateId() == null ? 0 : outlet.getInvoiceTemplateId());
+		settings.setMandatoryFields(MandatoryFields.parse(outlet.getMandatoryFields()));
 		return settings;
 	}
 
@@ -341,6 +342,10 @@ public class RegistrationServiceImpl implements RegistrationService {
 		outlet.setRegNo1(trimToNull(settings.getRegNo1()));
 		outlet.setRegNo2(trimToNull(settings.getRegNo2()));
 		outlet.setLogoData(isBlank(settings.getLogoData()) ? null : settings.getLogoData());
+		if (settings.getMandatoryFields() != null) {
+			String fields = MandatoryFields.format(settings.getMandatoryFields());
+			outlet.setMandatoryFields(fields.isEmpty() ? null : fields);
+		}
 		if (settings.getInvoiceTemplateId() != null) {
 			outlet.setInvoiceTemplateId(settings.getInvoiceTemplateId() == 0 ? null
 					: invoiceTemplateService.findCompanyTemplate(settings.getInvoiceTemplateId()).getTemplateId());

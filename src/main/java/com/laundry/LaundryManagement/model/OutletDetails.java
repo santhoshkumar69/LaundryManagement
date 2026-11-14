@@ -111,6 +111,10 @@ public class OutletDetails implements Serializable {
 	@Column(name = "INVOICE_TEMPLATE_ID")
 	private Integer invoiceTemplateId;
 
+	/** Billing and customer fields this outlet requires (see MandatoryFields); others are optional. */
+	@Column(name = "MANDATORY_FIELDS")
+	private String mandatoryFields;
+
 	public String getOutletName() {
 		return outletName;
 	}

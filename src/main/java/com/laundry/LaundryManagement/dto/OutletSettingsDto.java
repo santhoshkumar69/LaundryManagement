@@ -1,5 +1,7 @@
 package com.laundry.LaundryManagement.dto;
 
+import java.util.List;
+
 import lombok.Data;
 
 @Data
@@ -12,6 +14,9 @@ public class OutletSettingsDto {
 
 	/** Invoice template the outlet prints with, from any outlet of the company; 0 = built-in layout. */
 	private Integer invoiceTemplateId;
+
+	/** Keys from MandatoryFields that this outlet requires; null leaves the saved choice unchanged. */
+	private List<String> mandatoryFields;
 
 	private String outletCode;
 	private String outletName;
