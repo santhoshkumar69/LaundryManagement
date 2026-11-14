@@ -55,6 +55,9 @@ public class RegistrationServiceImpl implements RegistrationService {
 	private InvoiceTemplateService invoiceTemplateService;
 
 	@Autowired
+	private PaymentModeDefaults paymentModeDefaults;
+
+	@Autowired
 	private UserInfoRepository userInfoRepository;
 
 	@Autowired
@@ -103,6 +106,7 @@ public class RegistrationServiceImpl implements RegistrationService {
 		outlet.setOutletCode(tenant.getTenantCode() + "-" + (outletCount + 1));
 		outlet = outletDetailsRepo.save(outlet);
 
+		paymentModeDefaults.seed(tenant.getId(), outlet.getId(), "registration");
 		tenant.setNoOfOutlets((int) outletCount + 1);
 		tenantDetailsRepo.save(tenant);
 

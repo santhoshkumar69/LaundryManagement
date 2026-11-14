@@ -21,6 +21,7 @@ import lombok.Data;
 @Table(name = "TB_LA_PAYMENT_MODE")
 @Data
 @Filter(name = ScopeFilters.TENANT)
+@Filter(name = ScopeFilters.OUTLET)
 @EntityListeners(ScopeStampingListener.class)
 public class PaymentMode implements Serializable {
 
@@ -51,6 +52,13 @@ public class PaymentMode implements Serializable {
 	
 	@Column(name = "TENANT_ID")
 	private int tenantId;
+
+	@Column(name = "LOCATION_ID")
+	private String locationID;
+
+	/** Whether bills paid this way ask for a card type (Credit/Debit). */
+	@Column(name = "NEEDS_CARD_TYPE", nullable = false)
+	private boolean needsCardType;
 
 	/**
 	 * @return the id

@@ -30,6 +30,10 @@ final class PermissionRules {
 		rule("/manage/activateDiscounts", "DISCOUNTS.DELETE");
 		rule("/manage/deActivateDiscounts", "DISCOUNTS.DELETE");
 
+		rule("/payment/savePaymentMode", "PAYMENT_MODES.CREATE", "PAYMENT_MODES.EDIT");
+		rule("/payment/activatePaymentMode", "PAYMENT_MODES.DELETE");
+		rule("/payment/deActivatePaymentMode", "PAYMENT_MODES.DELETE");
+
 		rule("/billing/createEstimation", "RECEIVING.CREATE");
 		rule("/billing/confirmBilling", "RECEIVING.CREATE");
 		rule("/billing/cancelBilling", "RECEIVING.CREATE");

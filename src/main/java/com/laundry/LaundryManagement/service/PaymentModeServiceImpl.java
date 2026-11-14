@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import com.laundry.LaundryManagement.auth.RequestScope;
 import com.laundry.LaundryManagement.model.PaymentMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,13 +20,24 @@ public class PaymentModeServiceImpl implements PaymentModeService {
 	@Override
 	public boolean createPaymentMode(PaymentMode paymentMode) throws Exception {
 		try {
-			paymentMode.setActiveStatus(1);
+			String user = RequestScope.require().userName();
+			PaymentMode target;
 			if (paymentMode.getId() == null) {
-				paymentMode.setCreatedDate(new Date());
+				target = new PaymentMode();
+				target.setActiveStatus(1);
+				target.setCreatedBy(user);
+				target.setCreatedDate(new Date());
 			} else {
-				paymentMode.setUpdatedDate(new Date());
+				target = paymentModeRepo.findById(paymentMode.getId()).orElse(null);
+				if (target == null) {
+					return false;
+				}
+				target.setUpdatedBy(user);
+				target.setUpdatedDate(new Date());
 			}
-			paymentModeRepo.save(paymentMode);
+			target.setPaymentMode(paymentMode.getPaymentMode().trim());
+			target.setNeedsCardType(paymentMode.isNeedsCardType());
+			paymentModeRepo.save(target);
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -34,9 +46,10 @@ public class PaymentModeServiceImpl implements PaymentModeService {
 
 	}
 
+	/** Active payment modes of the current outlet. */
 	@Override
 	public List<PaymentMode> findAll() {
-		return paymentModeRepo.findAll();
+		return paymentModeRepo.findActivePaymentMode();
 	}
 
 	@Override

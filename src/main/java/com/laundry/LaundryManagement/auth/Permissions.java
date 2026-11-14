@@ -30,6 +30,7 @@ public final class Permissions {
 			new Screen("ITEMS", "Item Configuration", "Manage Items", ALL_ACTIONS),
 			new Screen("EXTRA_CHARGES", "Item Configuration", "Manage Extra Charges", ALL_ACTIONS),
 			new Screen("DISCOUNTS", "Item Configuration", "Manage Discounts", ALL_ACTIONS),
+			new Screen("PAYMENT_MODES", "Item Configuration", "Manage Payment Modes", ALL_ACTIONS),
 			new Screen("RECEIVING", "Bill", "Receiving", List.of(Action.VIEW, Action.CREATE)),
 			new Screen("ORDER_STATUS", "Bill", "Order Status", List.of(Action.VIEW, Action.EDIT, Action.DELETE)),
 			new Screen("DELIVERY", "Bill", "Delivery", List.of(Action.VIEW, Action.EDIT, Action.DELETE)),

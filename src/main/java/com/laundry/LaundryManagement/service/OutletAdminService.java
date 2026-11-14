@@ -23,6 +23,7 @@ import com.laundry.LaundryManagement.model.ItemCategory;
 import com.laundry.LaundryManagement.model.ItemMaster;
 import com.laundry.LaundryManagement.model.ItemMasterPriceDetails;
 import com.laundry.LaundryManagement.model.OutletDetails;
+import com.laundry.LaundryManagement.model.PaymentMode;
 import com.laundry.LaundryManagement.model.TenantDetails;
 import com.laundry.LaundryManagement.model.Unit;
 import com.laundry.LaundryManagement.model.UserInfo;
@@ -53,7 +54,7 @@ public class OutletAdminService {
 	}
 
 	public record CopySummary(int categories, int units, int laundryTypes, int items, int prices, int extraCharges,
-			int discounts) {
+			int discounts, int paymentModes) {
 	}
 
 	public record CreateOutletResult(OutletSummary outlet, CopySummary copied) {
@@ -67,6 +68,9 @@ public class OutletAdminService {
 
 	@Autowired
 	private UserOutletRepo userOutletRepo;
+
+	@Autowired
+	private PaymentModeDefaults paymentModeDefaults;
 
 	@PersistenceContext
 	private EntityManager em;
@@ -206,6 +210,9 @@ public class OutletAdminService {
 		tenantRepo.save(tenant);
 
 		CopySummary copied = copyFrom == null ? null : copyItemConfiguration(copyFrom, outlet.getId());
+		if (copied == null || copied.paymentModes() == 0) {
+			paymentModeDefaults.seed(tenantId, outlet.getId(), RequestScope.require().userName());
+		}
 		return new CreateOutletResult(OutletSummary.of(outlet), copied);
 	}
 
@@ -228,6 +235,8 @@ public class OutletAdminService {
 				() -> em.createQuery("from ExtraCharges c where c.activeStatus = 1", ExtraCharges.class).getResultList());
 		List<Discounts> discounts = RequestScope.asOutlet(fromOutletId,
 				() -> em.createQuery("from Discounts d where d.activeStatus = 1", Discounts.class).getResultList());
+		List<PaymentMode> paymentModes = RequestScope.asOutlet(fromOutletId,
+				() -> em.createQuery("from PaymentMode p where p.activeStatus = 1", PaymentMode.class).getResultList());
 
 		return RequestScope.asOutlet(toOutletId, () -> {
 			Map<Integer, Integer> categoryIds = new HashMap<>();
@@ -286,9 +295,12 @@ public class OutletAdminService {
 				copy.setBillingDetails(null);
 				em.persist(copy);
 			}
+			for (PaymentMode source : paymentModes) {
+				em.persist(copyOf(source));
+			}
 			em.flush();
 			return new CopySummary(categoryIds.size(), unitIds.size(), washingTypeIds.size(), copiedItems.size(),
-					priceCount, extraCharges.size(), discounts.size());
+					priceCount, extraCharges.size(), discounts.size(), paymentModes.size());
 		});
 	}
 

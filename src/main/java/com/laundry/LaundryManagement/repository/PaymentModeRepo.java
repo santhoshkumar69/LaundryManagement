@@ -17,4 +17,7 @@ public interface PaymentModeRepo extends JpaRepository<PaymentMode, Long>  {
 	@Query("From PaymentMode paymentMode where paymentMode.activeStatus = 0")
 	List<PaymentMode> findInactivePaymentMode();
 
+	@Query("From PaymentMode paymentMode where paymentMode.activeStatus = 1 order by paymentMode.id")
+	List<PaymentMode> findActivePaymentMode();
+
 }
