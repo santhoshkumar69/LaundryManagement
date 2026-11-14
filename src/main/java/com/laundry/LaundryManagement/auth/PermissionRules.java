@@ -75,6 +75,11 @@ final class PermissionRules {
 		rule("/expenses/save", "EXPENSES.CREATE", "EXPENSES.EDIT");
 		rule("/expenses/delete", "EXPENSES.DELETE");
 
+		// Credit balances are financial records, so reading them needs View.
+		rule("/credit/list", "CREDIT_LIST.VIEW");
+		rule("/credit/customer", "CREDIT_LIST.VIEW");
+		rule("/credit/export", "CREDIT_LIST.VIEW");
+
 		// Cashiers start and end their own shifts; the report and force-ending are for supervisors.
 		rule("/shifts/report", "SHIFTS.VIEW");
 		rule("/shifts/cashiers", "SHIFTS.VIEW");
