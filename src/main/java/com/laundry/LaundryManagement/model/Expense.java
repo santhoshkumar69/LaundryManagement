@@ -47,11 +47,26 @@ public class Expense implements Serializable {
 	@Column(name = "EXPENSE_NAME", nullable = false, length = 100)
 	private String expenseName;
 
-	@Column(name = "CATEGORY", nullable = false, length = 30)
+	@Column(name = "CATEGORY", nullable = false, length = 100)
 	private String category;
+
+	/** Required on new and edited entries; entries made before subcategories existed have none. */
+	@Column(name = "SUBCATEGORY", length = 100)
+	private String subcategory;
 
 	@Column(name = "AMOUNT", nullable = false, precision = 12, scale = 2)
 	private BigDecimal amount;
+
+	/** The shop's bill or receipt number for the expense. */
+	@Column(name = "RECEIPT_NO", length = 50)
+	private String receiptNo;
+
+	@Column(name = "PAYMENT_MODE_ID")
+	private Long paymentModeId;
+
+	/** Name of the payment mode at the time of saving, so history survives renames and deletions. */
+	@Column(name = "PAYMENT_MODE", length = 50)
+	private String paymentMode;
 
 	/** 1 = in use, 0 = deleted (kept for the record). */
 	@Column(name = "ACTIVE_STATUS", nullable = false)
@@ -59,6 +74,9 @@ public class Expense implements Serializable {
 
 	@Column(name = "CREATED_BY")
 	private String createdBy;
+
+	@Column(name = "CREATED_BY_LOGIN", length = 50)
+	private String createdByLogin;
 
 	@Column(name = "CREATED_DATE")
 	private Date createdDate;

@@ -63,6 +63,8 @@ final class PermissionRules {
 
 		// Expenses are financial records, so even reading them needs View.
 		rule("/expenses/list", "EXPENSES.VIEW");
+		rule("/expenses/categories", "EXPENSES.VIEW", "EXPENSES.CREATE", "EXPENSES.EDIT");
+		rule("/expenses/options", "EXPENSES.VIEW", "EXPENSES.CREATE", "EXPENSES.EDIT");
 		rule("/expenses/save", "EXPENSES.CREATE", "EXPENSES.EDIT");
 		rule("/expenses/delete", "EXPENSES.DELETE");
 

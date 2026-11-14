@@ -30,7 +30,12 @@ public class ExpenseController {
 
 	@GetMapping("/categories")
 	public ResponseEntity<Object> categories() {
-		return ResponseEntity.ok(ExpenseService.CATEGORIES);
+		return ResponseEntity.ok(expenseService.categoryNames());
+	}
+
+	@GetMapping("/options")
+	public ResponseEntity<Object> options() {
+		return ResponseEntity.ok(expenseService.options());
 	}
 
 	@GetMapping("/list")
