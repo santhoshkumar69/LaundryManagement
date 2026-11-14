@@ -34,6 +34,7 @@ public class RolePermissions {
 
 	private final UserRoleRepo roleRepo;
 	private final Map<String, Set<String>> cache = new ConcurrentHashMap<>();
+	private final Map<String, Boolean> shiftCache = new ConcurrentHashMap<>();
 
 	public RolePermissions(UserRoleRepo roleRepo) {
 		this.roleRepo = roleRepo;
@@ -72,7 +73,19 @@ public class RolePermissions {
 		return of(RequestScope.require()).contains(Permissions.code(screen, action));
 	}
 
+	/** Whether users with the role must work in shifts (cashiers). Admins never do. */
+	public boolean requiresShift(Integer tenantId, String role) {
+		if (tenantId == null || role == null || "admin".equalsIgnoreCase(role)) {
+			return false;
+		}
+		return shiftCache.computeIfAbsent(tenantId + "|" + role.toLowerCase(), key -> RequestScope.asSystem(() -> {
+			RoleDetails details = roleRepo.findActiveRole(tenantId, role);
+			return details != null && details.isRequiresShift();
+		}));
+	}
+
 	public void refresh() {
 		cache.clear();
+		shiftCache.clear();
 	}
 }

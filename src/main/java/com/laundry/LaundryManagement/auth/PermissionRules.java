@@ -66,6 +66,11 @@ final class PermissionRules {
 		rule("/expenses/save", "EXPENSES.CREATE", "EXPENSES.EDIT");
 		rule("/expenses/delete", "EXPENSES.DELETE");
 
+		// Cashiers start and end their own shifts; the report and force-ending are for supervisors.
+		rule("/shifts/report", "SHIFTS.VIEW");
+		rule("/shifts/cashiers", "SHIFTS.VIEW");
+		rule("/shifts/forceEnd", "SHIFTS.EDIT");
+
 		rule("/invoiceTemplate/save", "INVOICE_TEMPLATE.CREATE", "INVOICE_TEMPLATE.EDIT");
 		rule("/invoiceTemplate/apply", "INVOICE_TEMPLATE.EDIT");
 		rule("/invoiceTemplate/delete", "INVOICE_TEMPLATE.DELETE");

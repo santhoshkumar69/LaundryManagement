@@ -33,7 +33,8 @@ public class AuthService {
 	}
 
 	public record Session(String token, String userId, String userName, String role, String tenantCode,
-			String companyName, OutletOption outlet, List<OutletOption> outlets, Set<String> permissions) {
+			String companyName, OutletOption outlet, List<OutletOption> outlets, Set<String> permissions,
+			boolean requiresShift) {
 	}
 
 	public static class AuthException extends RuntimeException {
@@ -94,7 +95,8 @@ public class AuthService {
 					user.getRole(), tenant.getId(), chosen == null ? null : chosen.id(), false);
 			return new Session(tokens.issue(scope), user.getUserId(), user.getUserName(), user.getRole(),
 					tenant.getTenantCode(), tenant.getCompanyName(), chosen, outlets,
-					rolePermissions.of(tenant.getId(), user.getRole()));
+					rolePermissions.of(tenant.getId(), user.getRole()),
+					rolePermissions.requiresShift(tenant.getId(), user.getRole()));
 		});
 	}
 
@@ -118,7 +120,8 @@ public class AuthService {
 			OutletOption chosen = outlets.stream().filter(o -> o.id().equals(scope.outletId())).findFirst().orElse(null);
 			TenantDetails tenant = tenantRepo.findById(scope.tenantId()).orElseThrow();
 			return new Session(null, user.getUserId(), user.getUserName(), user.getRole(), tenant.getTenantCode(),
-					tenant.getCompanyName(), chosen, outlets, rolePermissions.of(scope.tenantId(), user.getRole()));
+					tenant.getCompanyName(), chosen, outlets, rolePermissions.of(scope.tenantId(), user.getRole()),
+					rolePermissions.requiresShift(scope.tenantId(), user.getRole()));
 		});
 	}
 
@@ -158,6 +161,6 @@ public class AuthService {
 				user.getRole(), tenantId, chosen.id(), false);
 		return new Session(tokens.issue(scope), user.getUserId(), user.getUserName(), user.getRole(),
 				tenant.getTenantCode(), tenant.getCompanyName(), chosen, outlets,
-				rolePermissions.of(tenantId, user.getRole()));
+				rolePermissions.of(tenantId, user.getRole()), rolePermissions.requiresShift(tenantId, user.getRole()));
 	}
 }

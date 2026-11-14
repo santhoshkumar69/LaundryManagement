@@ -64,6 +64,10 @@ public class RoleDetails implements Serializable{
 	@Column(name = "PERMISSIONS", columnDefinition = "TEXT")
 	private String permissions;
 
+	/** Users with this role (cashiers) must start a shift before billing; never set for Admin. */
+	@Column(name = "REQUIRES_SHIFT", nullable = false)
+	private boolean requiresShift;
+
 	public String getUserRole() {
 		return userRole;
 	}

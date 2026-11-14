@@ -167,7 +167,7 @@ public class RegistrationServiceImpl implements RegistrationService {
 			RoleDetails role = new RoleDetails();
 			role.setUserRole(roleName);
 			role.setActiveStatus(1);
-			role.setPermissions(Permissions.format(Permissions.all()));
+			role.setPermissions(Permissions.format(Permissions.staffDefaults()));
 			role.setTenantId(tenant.getId());
 			role.setCreatedBy("registration");
 			role.setCreatedDate(new Date());

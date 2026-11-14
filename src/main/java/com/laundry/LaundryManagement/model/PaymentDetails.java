@@ -70,6 +70,10 @@ public class PaymentDetails implements Serializable{
 	
 	@Column(name = "TENANT_ID")
 	private int tenantId;
+
+	/** Cashier shift the payment was taken in, if the user works in shifts. */
+	@Column(name = "SHIFT_ID")
+	private Long shiftId;
 	
 	/**
 	 * @return the payID

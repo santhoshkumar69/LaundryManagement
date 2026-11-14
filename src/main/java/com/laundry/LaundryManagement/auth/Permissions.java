@@ -36,6 +36,7 @@ public final class Permissions {
 			new Screen("DELIVERY", "Bill", "Delivery", List.of(Action.VIEW, Action.EDIT, Action.DELETE)),
 			new Screen("CUSTOMERS", "Customer", "Manage Customer", List.of(Action.VIEW, Action.CREATE, Action.DELETE)),
 			new Screen("EXPENSES", "Accounts", "Expense Track", ALL_ACTIONS),
+			new Screen("SHIFTS", "Accounts", "Shifts", List.of(Action.VIEW, Action.EDIT)),
 			new Screen("INVOICE_TEMPLATE", "Settings", "Invoice Template", ALL_ACTIONS));
 
 	private static final Set<String> ALL_CODES = SCREENS.stream()
@@ -51,6 +52,12 @@ public final class Permissions {
 
 	public static Set<String> all() {
 		return ALL_CODES;
+	}
+
+	/** What a new company's Staff role gets: everything except supervisor screens such as the shift report. */
+	public static Set<String> staffDefaults() {
+		return ALL_CODES.stream().filter(code -> !code.startsWith("SHIFTS."))
+				.collect(Collectors.toCollection(LinkedHashSet::new));
 	}
 
 	/** Known codes only, with View added for any screen that has another action. */

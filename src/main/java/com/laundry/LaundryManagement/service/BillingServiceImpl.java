@@ -78,6 +78,8 @@ public class BillingServiceImpl implements BillingService {
 	@Autowired
 	EstimationRepository estimationRepo;
 	@Autowired
+	ShiftService shiftService;
+	@Autowired
 	BilledComponetRepository billingRepo;
 	@Autowired
 	InvoiceDetailRepository invoiceRepo;
@@ -168,6 +170,7 @@ public class BillingServiceImpl implements BillingService {
 			pay.setPaidAmount(confirmBill.getPaidAmount());
 			pay.setPayDate(new Date());
 			pay.setPaidMode(confirmBill.getPayMode());
+			pay.setShiftId(shiftService.openShiftIdHere());
 			CommonUtills.addDefaultCreateInfos(pay, pay.getClass(), globalInfo);
 			paymentRepo.save(pay);
 			pay.setReceiptNumber(outletSequenceService.next(OutletSequenceService.RECEIPT));
@@ -472,6 +475,7 @@ public class BillingServiceImpl implements BillingService {
 			pay.setPaidAmount(partAmount);
 			pay.setPayDate(new Date());
 			pay.setPaidMode(part.getPayMode());
+			pay.setShiftId(shiftService.openShiftIdHere());
 			CommonUtills.addDefaultCreateInfos(pay, pay.getClass(), globalInfo);
 			paymentRepo.save(pay);
 			pay.setReceiptNumber(outletSequenceService.next(OutletSequenceService.PAYMENT));

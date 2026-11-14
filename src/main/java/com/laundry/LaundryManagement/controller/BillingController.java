@@ -14,6 +14,7 @@ import com.laundry.LaundryManagement.service.BillingService;
 import com.laundry.LaundryManagement.service.MandatoryFields;
 import com.laundry.LaundryManagement.service.MasterService;
 import com.laundry.LaundryManagement.service.OutletMandatoryFields;
+import com.laundry.LaundryManagement.service.ShiftService;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -58,6 +59,9 @@ public class BillingController {
 
 	@Autowired
 	private OutletMandatoryFields outletMandatoryFields;
+
+	@Autowired
+	private ShiftService shiftService;
 	
 	@Autowired
     BillingService billingService;
@@ -78,12 +82,14 @@ public class BillingController {
 	
 	@PostMapping("/createEstimation")
 	public ResponseEntity<?> createBillingComponents(@RequestBody BillingInfos billingReq, HttpSession httpSession){
+		shiftService.requireShiftForCashWork();
 		BilledDetails billedCompos = billingService.createEstimationDetails(billingReq,RequestScope.globalInfo());
 		return ResponseEntity.ok().body(billedCompos);
 	}
 	
 	@PostMapping("/confirmBilling")
 	public ResponseEntity<?> confirmBillingDetails(@RequestBody ConfirmBilling confirmBill, HttpSession httpSession) {
+		shiftService.requireShiftForCashWork();
 		List<String> missing = outletMandatoryFields.missing(Map.of(
 				MandatoryFields.DELIVERY_DATE, OutletMandatoryFields.value(confirmBill.getDeliveryDate()),
 				MandatoryFields.DELIVERY_ADDRESS, OutletMandatoryFields.value(confirmBill.getDeliveryAddress()),
@@ -141,6 +147,7 @@ public class BillingController {
 
 	@PostMapping("/payOrder")
 	public ResponseEntity<?> payOrder(@RequestBody PayOrderRequest request, HttpSession httpSession) {
+		shiftService.requireShiftForCashWork();
 		try {
 			return ResponseEntity.ok().body(billingService.payOrder(request,
 					RequestScope.globalInfo()));
@@ -164,6 +171,7 @@ public class BillingController {
 
 	@PostMapping("/recallPayment")
 	public ResponseEntity<?> recallPayment(@RequestBody RecallPaymentRequest request, HttpSession httpSession) {
+		shiftService.requireShiftForCashWork();
 		try {
 			return ResponseEntity.ok().body(billingService.recallPayment(request,
 					RequestScope.globalInfo()));

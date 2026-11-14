@@ -27,11 +27,12 @@ public class RoleAdminService {
 	static final String STAFF_ROLE = "Staff";
 	private static final int MAX_NAME_LENGTH = 50;
 
+	/** requiresShift: users with the role are cashiers who must start a shift before billing. */
 	public record RoleSummary(Integer id, String name, boolean admin, boolean builtIn, Set<String> permissions,
-			long users) {
+			long users, boolean requiresShift) {
 	}
 
-	public record SaveRoleRequest(Integer id, String name, List<String> permissions) {
+	public record SaveRoleRequest(Integer id, String name, List<String> permissions, Boolean requiresShift) {
 	}
 
 	@Autowired
@@ -101,6 +102,7 @@ public class RoleAdminService {
 		}
 		role.setUserRole(name);
 		role.setPermissions(permissions);
+		role.setRequiresShift(Boolean.TRUE.equals(request.requiresShift()));
 		role = roleRepo.save(role);
 		long users = em.createQuery("select count(u) from UserInfo u where u.role = :name", Long.class)
 				.setParameter("name", name).getSingleResult();
@@ -138,7 +140,8 @@ public class RoleAdminService {
 		boolean admin = isAdmin(role.getUserRole());
 		return new RoleSummary(role.getId(), role.getUserRole(), admin,
 				admin || STAFF_ROLE.equalsIgnoreCase(role.getUserRole()),
-				admin ? Permissions.all() : Permissions.parse(role.getPermissions()), users);
+				admin ? Permissions.all() : Permissions.parse(role.getPermissions()), users,
+				!admin && role.isRequiresShift());
 	}
 
 	private static boolean isAdmin(String roleName) {
