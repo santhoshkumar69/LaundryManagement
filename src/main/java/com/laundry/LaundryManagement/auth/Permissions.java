@@ -35,6 +35,7 @@ public final class Permissions {
 			new Screen("ORDER_STATUS", "Bill", "Order Status", List.of(Action.VIEW, Action.EDIT, Action.DELETE)),
 			new Screen("DELIVERY", "Bill", "Delivery", List.of(Action.VIEW, Action.EDIT, Action.DELETE)),
 			new Screen("CUSTOMERS", "Customer", "Manage Customer", List.of(Action.VIEW, Action.CREATE, Action.DELETE)),
+			new Screen("EXPENSES", "Accounts", "Expense Track", ALL_ACTIONS),
 			new Screen("INVOICE_TEMPLATE", "Settings", "Invoice Template", ALL_ACTIONS));
 
 	private static final Set<String> ALL_CODES = SCREENS.stream()

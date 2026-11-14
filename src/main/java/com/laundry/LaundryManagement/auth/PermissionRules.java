@@ -6,8 +6,9 @@ import java.util.Map;
 
 /**
  * Permissions a non-admin needs to call each create/edit/delete endpoint; holding any one of the
- * listed codes is enough. Read endpoints are not listed because several screens share them (the
- * bill screens read categories and items); the app hides screens a role cannot view.
+ * listed codes is enough. Read endpoints are mostly not listed because several screens share them (the
+ * bill screens read categories and items); the app hides screens a role cannot view. Expense Track's
+ * list is the exception, as only that screen reads it.
  */
 final class PermissionRules {
 
@@ -59,6 +60,11 @@ final class PermissionRules {
 		excel("items", "ITEMS");
 		excel("extraCharges", "EXTRA_CHARGES");
 		excel("discounts", "DISCOUNTS");
+
+		// Expenses are financial records, so even reading them needs View.
+		rule("/expenses/list", "EXPENSES.VIEW");
+		rule("/expenses/save", "EXPENSES.CREATE", "EXPENSES.EDIT");
+		rule("/expenses/delete", "EXPENSES.DELETE");
 
 		rule("/invoiceTemplate/save", "INVOICE_TEMPLATE.CREATE", "INVOICE_TEMPLATE.EDIT");
 		rule("/invoiceTemplate/apply", "INVOICE_TEMPLATE.EDIT");
