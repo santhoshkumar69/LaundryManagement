@@ -48,6 +48,14 @@ final class PermissionRules {
 		rule("/customerInfo/deActiveCustomerInfo", "CUSTOMERS.DELETE");
 		rule("/customerInfo/activeCustomer", "CUSTOMERS.DELETE");
 
+		// Excel export needs View; import needs Create, Edit or Delete, refined by what the file changes.
+		excel("category", "CATEGORY");
+		excel("unit", "UNIT");
+		excel("laundryType", "LAUNDRY_TYPE");
+		excel("items", "ITEMS");
+		excel("extraCharges", "EXTRA_CHARGES");
+		excel("discounts", "DISCOUNTS");
+
 		rule("/invoiceTemplate/save", "INVOICE_TEMPLATE.CREATE", "INVOICE_TEMPLATE.EDIT");
 		rule("/invoiceTemplate/apply", "INVOICE_TEMPLATE.EDIT");
 		rule("/invoiceTemplate/delete", "INVOICE_TEMPLATE.DELETE");
@@ -66,6 +74,11 @@ final class PermissionRules {
 		rule(edit, screen + ".EDIT");
 		rule(delete, screen + ".DELETE");
 		rule(restore, screen + ".DELETE");
+	}
+
+	private static void excel(String key, String screen) {
+		rule("/itemConfigExcel/" + key + "/export", screen + ".VIEW");
+		rule("/itemConfigExcel/" + key + "/import", screen + ".CREATE", screen + ".EDIT", screen + ".DELETE");
 	}
 
 	private static void rule(String path, String... codes) {

@@ -25,7 +25,7 @@ import lombok.Data;
 @EntityListeners(ScopeStampingListener.class)
 public class ItemCategory implements Serializable{
 	
-	 ItemCategory()
+	 public ItemCategory()
 	 {
     	activeStatus = 1;
 	}

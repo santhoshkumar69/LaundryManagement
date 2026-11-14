@@ -24,7 +24,11 @@ public class RolePermissions {
 		private static final long serialVersionUID = 1L;
 
 		public PermissionDeniedException() {
-			super("Your role does not allow this. Ask your admin for access.");
+			this("Your role does not allow this. Ask your admin for access.");
+		}
+
+		public PermissionDeniedException(String message) {
+			super(message);
 		}
 	}
 
@@ -62,6 +66,10 @@ public class RolePermissions {
 		if (!of(RequestScope.require()).contains(Permissions.code(screen, action))) {
 			throw new PermissionDeniedException();
 		}
+	}
+
+	public boolean has(String screen, Permissions.Action action) {
+		return of(RequestScope.require()).contains(Permissions.code(screen, action));
 	}
 
 	public void refresh() {

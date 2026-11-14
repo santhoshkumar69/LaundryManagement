@@ -28,7 +28,7 @@ import lombok.Data;
 public class Unit implements Serializable {
 
 
-	Unit()
+	public Unit()
 	 {
     	activeStatus = 1;
 	}
