@@ -100,6 +100,10 @@ public class Shift implements Serializable {
 	@Column(name = "CLOSING_CASH", precision = 12, scale = 2)
 	private BigDecimal closingCash;
 
+	/** Notes and coins counted at close, as JSON [{"value":500.00,"count":2}, ...]; closingCash is their total. */
+	@Column(name = "DENOMINATIONS", columnDefinition = "TEXT")
+	private String denominations;
+
 	/** Closing cash minus expected cash. */
 	@Column(name = "DIFFERENCE_AMT", precision = 12, scale = 2)
 	private BigDecimal difference;

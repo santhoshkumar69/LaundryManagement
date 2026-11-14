@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -22,9 +23,11 @@ import com.laundry.LaundryManagement.model.Shift;
 import com.laundry.LaundryManagement.model.UserInfo;
 import com.laundry.LaundryManagement.repository.OutletDetailsRepo;
 import com.laundry.LaundryManagement.repository.ShiftRepo;
+import com.laundry.LaundryManagement.service.ShiftDenominations.Denomination;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Cashier shifts. A user whose role requires shifts has at most one open shift, tied to the outlet it was
@@ -38,6 +41,7 @@ public class ShiftService {
 
 	private static final BigDecimal MAX_AMOUNT = new BigDecimal("9999999999.99");
 	private static final int MAX_NOTE_LENGTH = 255;
+	private static final int MAX_COUNT = 1_000_000;
 
 	/**
 	 * Times are ISO-8601 instants (e.g. 2026-11-14T10:15:30Z) so the browser timer can count from them.
@@ -47,7 +51,12 @@ public class ShiftService {
 			String loginId, String userName, String status, String startTime, String endTime, long durationMinutes,
 			BigDecimal openingCash, String openingNote, BigDecimal billCash, BigDecimal deliveryCash,
 			BigDecimal recalledCash, BigDecimal expenseCash, BigDecimal cashCollected, BigDecimal expectedCash,
-			BigDecimal closingCash, BigDecimal difference, String closingNote, String endedBy) {
+			BigDecimal closingCash, BigDecimal difference, String closingNote, String endedBy, String currency,
+			List<Denomination> denominationOptions, List<DenominationCount> denominations) {
+	}
+
+	/** How many of one note or coin were counted, e.g. value 100.00, count 3. */
+	public record DenominationCount(BigDecimal value, Integer count) {
 	}
 
 	private record CashBreakdown(BigDecimal bills, BigDecimal delivery, BigDecimal recalled, BigDecimal expenses) {
@@ -63,7 +72,8 @@ public class ShiftService {
 	public record StartShiftRequest(BigDecimal openingCash, String note) {
 	}
 
-	public record EndShiftRequest(Long shiftId, BigDecimal closingCash, String note) {
+	/** The counted cash is the total of the denominations; closingCash is not accepted on its own. */
+	public record EndShiftRequest(Long shiftId, String note, List<DenominationCount> denominations) {
 	}
 
 	public record Cashier(Integer userDbId, String loginId, String name) {
@@ -84,11 +94,13 @@ public class ShiftService {
 	@PersistenceContext
 	private EntityManager em;
 
+	private final ObjectMapper objectMapper = new ObjectMapper();
+
 	public CurrentShift current() {
 		RequestScope.Scope scope = RequestScope.require();
 		Shift open = openShift(scope);
 		return new CurrentShift(rolePermissions.requiresShift(scope.tenantId(), scope.role()),
-				open == null ? null : view(open, outletNames()), open != null && isHere(open));
+				open == null ? null : view(open, outlets()), open != null && isHere(open));
 	}
 
 	@Transactional
@@ -115,7 +127,7 @@ public class ShiftService {
 		shift.setStartTime(new Date());
 		shift.setOpeningCash(openingCash);
 		shift.setOpeningNote(openingNote);
-		return view(shiftRepo.save(shift), outletNames());
+		return view(shiftRepo.save(shift), outlets());
 	}
 
 	/** Ends the caller's own open shift, which must be in the current outlet. */
@@ -155,9 +167,9 @@ public class ShiftService {
 		if (end.isBefore(start)) {
 			throw new IllegalArgumentException("To date must be on or after From date");
 		}
-		Map<String, String> names = outletNames();
+		Map<String, OutletDetails> outlets = outlets();
 		return shiftRepo.findForReport(startOf(start), startOf(end.plusDays(1)), userDbId).stream()
-				.map(s -> view(s, names)).toList();
+				.map(s -> view(s, outlets)).toList();
 	}
 
 	public List<Cashier> cashiers() {
@@ -205,7 +217,14 @@ public class ShiftService {
 	// ---- Helpers ----
 
 	private ShiftView close(Shift shift, EndShiftRequest request, String endedBy) {
-		BigDecimal closing = amount(request == null ? null : request.closingCash(), "Closing cash");
+		Map<String, OutletDetails> outlets = outlets();
+		List<DenominationCount> counted = countedDenominations(request == null ? null : request.denominations(),
+				ShiftDenominations.forCurrency(currencyOf(shift, outlets)));
+		BigDecimal closing = counted.stream().map(c -> c.value().multiply(BigDecimal.valueOf(c.count())))
+				.reduce(BigDecimal.ZERO, BigDecimal::add).setScale(2, RoundingMode.HALF_UP);
+		if (closing.compareTo(MAX_AMOUNT) > 0) {
+			throw new IllegalArgumentException("Counted cash is too large");
+		}
 		CashBreakdown cash = recordedCash(shift);
 		BigDecimal collected = cash.net();
 		BigDecimal expected = shift.getOpeningCash().add(collected);
@@ -218,10 +237,63 @@ public class ShiftService {
 		shift.setCashCollected(collected);
 		shift.setExpectedCash(expected);
 		shift.setClosingCash(closing);
+		shift.setDenominations(objectMapper.writeValueAsString(counted));
 		shift.setDifference(closing.subtract(expected));
 		shift.setClosingNote(note(request == null ? null : request.note()));
 		shift.setEndedBy(endedBy);
-		return view(shiftRepo.save(shift), outletNames());
+		return view(shiftRepo.save(shift), outlets);
+	}
+
+	/**
+	 * Checks the counts against the outlet's notes and coins and keeps the non-zero ones, largest first. The list
+	 * is required (all zeros is a valid count of an empty drawer).
+	 */
+	private static List<DenominationCount> countedDenominations(List<DenominationCount> submitted,
+			List<Denomination> allowed) {
+		if (submitted == null || submitted.isEmpty()) {
+			throw new IllegalArgumentException("Enter how many of each note and coin you counted");
+		}
+		Map<BigDecimal, Integer> counts = new HashMap<>();
+		for (DenominationCount entry : submitted) {
+			if (entry == null || entry.value() == null) {
+				throw new IllegalArgumentException("Each denomination needs a value");
+			}
+			BigDecimal value = entry.value().setScale(2, RoundingMode.HALF_UP);
+			if (allowed.stream().noneMatch(d -> d.value().compareTo(value) == 0)) {
+				throw new IllegalArgumentException(value.toPlainString() + " is not a note or coin of this outlet's currency");
+			}
+			int count = entry.count() == null ? 0 : entry.count();
+			if (count < 0 || count > MAX_COUNT) {
+				throw new IllegalArgumentException("Count for " + value.toPlainString() + " must be between 0 and " + MAX_COUNT);
+			}
+			if (counts.put(value, count) != null) {
+				throw new IllegalArgumentException(value.toPlainString() + " is listed more than once");
+			}
+		}
+		List<DenominationCount> counted = new ArrayList<>();
+		for (Denomination d : allowed) {
+			Integer count = counts.get(d.value());
+			if (count != null && count > 0) {
+				counted.add(new DenominationCount(d.value(), count));
+			}
+		}
+		return counted;
+	}
+
+	private List<DenominationCount> savedDenominations(Shift shift) {
+		if (blank(shift.getDenominations())) {
+			return List.of();
+		}
+		try {
+			return List.of(objectMapper.readValue(shift.getDenominations(), DenominationCount[].class));
+		} catch (RuntimeException ex) {
+			return List.of();
+		}
+	}
+
+	private static String currencyOf(Shift shift, Map<String, OutletDetails> outlets) {
+		OutletDetails outlet = outlets.get(shift.getLocationID());
+		return outlet == null ? null : outlet.getCurrency();
 	}
 
 	/** Payments, recalls and expenses tagged with the shift; read as the shift's outlet since they are outlet-scoped. */
@@ -235,7 +307,7 @@ public class ShiftService {
 		return BigDecimal.valueOf(value == null ? 0 : value).setScale(2, RoundingMode.HALF_UP);
 	}
 
-	private ShiftView view(Shift s, Map<String, String> outletNames) {
+	private ShiftView view(Shift s, Map<String, OutletDetails> outlets) {
 		boolean open = Shift.OPEN.equals(s.getStatus());
 		Date end = open ? new Date() : s.getEndTime();
 		CashBreakdown cash = open ? recordedCash(s)
@@ -244,12 +316,15 @@ public class ShiftService {
 		BigDecimal collected = open ? cash.net() : s.getCashCollected();
 		BigDecimal expected = open ? s.getOpeningCash().add(collected) : s.getExpectedCash();
 		long minutes = Math.max(0, (end.getTime() - s.getStartTime().getTime()) / 60000);
+		OutletDetails outlet = outlets.get(s.getLocationID());
+		String currency = outlet == null ? null : outlet.getCurrency();
 		return new ShiftView(s.getId(), s.getShiftNo(), Integer.valueOf(s.getLocationID()),
-				outletNames.getOrDefault(s.getLocationID(), ""), s.getUserDbId(), s.getLoginId(), s.getUserName(),
+				outlet == null ? "" : outlet.getOutletName(), s.getUserDbId(), s.getLoginId(), s.getUserName(),
 				s.getStatus(), s.getStartTime().toInstant().toString(),
 				open ? null : s.getEndTime().toInstant().toString(), minutes, s.getOpeningCash(), s.getOpeningNote(),
 				cash.bills(), cash.delivery(), cash.recalled(), cash.expenses(), collected, expected,
-				s.getClosingCash(), s.getDifference(), s.getClosingNote(), s.getEndedBy());
+				s.getClosingCash(), s.getDifference(), s.getClosingNote(), s.getEndedBy(), currency,
+				ShiftDenominations.forCurrency(currency), open ? List.of() : savedDenominations(s));
 	}
 
 	private static BigDecimal zeroIfNull(BigDecimal value) {
@@ -270,16 +345,17 @@ public class ShiftService {
 		return isHere(shift) ? work.get() : RequestScope.asOutlet(Integer.parseInt(shift.getLocationID()), work);
 	}
 
-	private Map<String, String> outletNames() {
-		Map<String, String> names = new HashMap<>();
+	private Map<String, OutletDetails> outlets() {
+		Map<String, OutletDetails> outlets = new HashMap<>();
 		for (OutletDetails outlet : outletRepo.findByTenantIdOrderByIdAsc(RequestScope.requireTenantId())) {
-			names.put(String.valueOf(outlet.getId()), outlet.getOutletName());
+			outlets.put(String.valueOf(outlet.getId()), outlet);
 		}
-		return names;
+		return outlets;
 	}
 
 	private String outletName(Shift shift) {
-		return outletNames().getOrDefault(shift.getLocationID(), "another outlet");
+		OutletDetails outlet = outlets().get(shift.getLocationID());
+		return outlet == null ? "another outlet" : outlet.getOutletName();
 	}
 
 	private static BigDecimal amount(BigDecimal value, String label) {
