@@ -75,6 +75,11 @@ public class InvoiceTemplate implements Serializable {
 		return templateId;
 	}
 
+	/** ID of the outlet that owns the template. */
+	public String getLocationID() {
+		return locationID;
+	}
+
 	public void setTemplateId(Integer templateId) {
 		this.templateId = templateId;
 	}

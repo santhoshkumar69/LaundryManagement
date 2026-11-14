@@ -3,6 +3,7 @@ package com.laundry.LaundryManagement.service;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.laundry.LaundryManagement.auth.RequestScope;
 import com.laundry.LaundryManagement.model.Discounts;
 import com.laundry.LaundryManagement.model.ExtraCharges;
+import com.laundry.LaundryManagement.model.InvoiceTemplate;
 import com.laundry.LaundryManagement.model.ItemCategory;
 import com.laundry.LaundryManagement.model.ItemMaster;
 import com.laundry.LaundryManagement.model.ItemMasterPriceDetails;
@@ -26,8 +28,6 @@ import com.laundry.LaundryManagement.model.Unit;
 import com.laundry.LaundryManagement.model.UserInfo;
 import com.laundry.LaundryManagement.model.UserOutlet;
 import com.laundry.LaundryManagement.model.WashingType;
-import com.laundry.LaundryManagement.model.InvoiceTemplate;
-import com.laundry.LaundryManagement.repository.InvoiceTemplateRepository;
 import com.laundry.LaundryManagement.repository.OutletDetailsRepo;
 import com.laundry.LaundryManagement.repository.TenantDetailsRepo;
 import com.laundry.LaundryManagement.repository.UserOutletRepo;
@@ -40,24 +40,11 @@ import jakarta.persistence.PersistenceContext;
 @Service
 public class OutletAdminService {
 
-	public record TemplateOption(Integer id, String name) {
-	}
-
-	/**
-	 * invoiceTemplateId is the template the outlet prints bills with (0 = built-in Standard 80mm);
-	 * invoiceTemplates are the outlet's own templates. Both are filled only by list().
-	 */
 	public record OutletSummary(Integer id, String outletCode, String outletName, String city, String currency,
-			String mobileNo, String emailId, boolean active, Integer invoiceTemplateId,
-			List<TemplateOption> invoiceTemplates) {
+			String mobileNo, String emailId, boolean active) {
 		static OutletSummary of(OutletDetails outlet) {
-			return of(outlet, null, List.of());
-		}
-
-		static OutletSummary of(OutletDetails outlet, Integer invoiceTemplateId, List<TemplateOption> invoiceTemplates) {
 			return new OutletSummary(outlet.getId(), outlet.getOutletCode(), outlet.getOutletName(), outlet.getCity(),
-					outlet.getCurrency(), outlet.getMobileNo(), outlet.getEmailId(), outlet.getActiveStatus() == 1,
-					invoiceTemplateId, invoiceTemplates);
+					outlet.getCurrency(), outlet.getMobileNo(), outlet.getEmailId(), outlet.getActiveStatus() == 1);
 		}
 	}
 
@@ -81,44 +68,34 @@ public class OutletAdminService {
 	@Autowired
 	private UserOutletRepo userOutletRepo;
 
-	@Autowired
-	private InvoiceTemplateRepository invoiceTemplateRepository;
-
-	@Autowired
-	private InvoiceTemplateService invoiceTemplateService;
-
 	@PersistenceContext
 	private EntityManager em;
+
+	public record TemplateChoice(Integer id, String name, Integer outletId, String outletName) {
+	}
+
+	/** Every invoice template in the company with its owning outlet; any outlet may print with any of them. */
+	public List<TemplateChoice> invoiceTemplates() {
+		RequestScope.Scope scope = requireAdmin();
+		Map<String, OutletDetails> outlets = new HashMap<>();
+		outletRepo.findByTenantIdOrderByIdAsc(scope.tenantId()).forEach(o -> outlets.put(String.valueOf(o.getId()), o));
+		List<InvoiceTemplate> templates = RequestScope.asSystem(() -> em
+				.createQuery("from InvoiceTemplate t where t.tenantId = :tenantId and t.activeStatus = 1", InvoiceTemplate.class)
+				.setParameter("tenantId", scope.tenantId()).getResultList());
+		return templates.stream().filter(t -> outlets.containsKey(t.getLocationID()))
+				.map(t -> new TemplateChoice(t.getTemplateId(), t.getTemplateName(), outlets.get(t.getLocationID()).getId(),
+						outlets.get(t.getLocationID()).getOutletName()))
+				.sorted(Comparator.comparing(TemplateChoice::outletId).thenComparing(TemplateChoice::name,
+						String.CASE_INSENSITIVE_ORDER))
+				.toList();
+	}
 
 	public List<OutletSummary> list(boolean includeDeleted) {
 		requireAdmin();
 		int tenantId = RequestScope.requireTenantId();
 		List<OutletDetails> outlets = includeDeleted ? outletRepo.findByTenantIdOrderByIdAsc(tenantId)
 				: outletRepo.findActiveByTenantId(tenantId);
-		return outlets.stream().map(o -> o.getActiveStatus() == 1 ? withTemplates(o) : OutletSummary.of(o)).toList();
-	}
-
-	/** Makes the outlet print bills with one of its templates, or the built-in layout when templateId is 0. */
-	@Transactional
-	public OutletSummary applyInvoiceTemplate(int outletId, int templateId) {
-		requireAdmin();
-		OutletDetails outlet = outletRepo.findById(outletId)
-				.orElseThrow(() -> new IllegalArgumentException("Outlet not found"));
-		if (outlet.getActiveStatus() != 1) {
-			throw new IllegalArgumentException(outlet.getOutletName() + " is deleted; restore it first");
-		}
-		RequestScope.asOutlet(outletId,
-				() -> invoiceTemplateService.applyTemplate(templateId, RequestScope.globalInfo()));
-		return withTemplates(outlet);
-	}
-
-	private OutletSummary withTemplates(OutletDetails outlet) {
-		List<InvoiceTemplate> templates = RequestScope.asOutlet(outlet.getId(),
-				() -> invoiceTemplateRepository.findLive(outlet.getTenantId()));
-		Integer applied = templates.stream().filter(t -> Integer.valueOf(1).equals(t.getIsActive()))
-				.map(InvoiceTemplate::getTemplateId).findFirst().orElse(0);
-		return OutletSummary.of(outlet, applied,
-				templates.stream().map(t -> new TemplateOption(t.getTemplateId(), t.getTemplateName())).toList());
+		return outlets.stream().map(OutletSummary::of).toList();
 	}
 
 	/** Hides the outlet everywhere; its bills, items and history stay in the database. */

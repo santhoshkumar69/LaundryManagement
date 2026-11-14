@@ -52,6 +52,9 @@ public class RegistrationServiceImpl implements RegistrationService {
 	private OutletDetailsRepo outletDetailsRepo;
 
 	@Autowired
+	private InvoiceTemplateService invoiceTemplateService;
+
+	@Autowired
 	private UserInfoRepository userInfoRepository;
 
 	@Autowired
@@ -279,6 +282,7 @@ public class RegistrationServiceImpl implements RegistrationService {
 		settings.setRegNo1(outlet.getRegNo1());
 		settings.setRegNo2(outlet.getRegNo2());
 		settings.setLogoData(outlet.getLogoData());
+		settings.setInvoiceTemplateId(outlet.getInvoiceTemplateId() == null ? 0 : outlet.getInvoiceTemplateId());
 		return settings;
 	}
 
@@ -337,6 +341,10 @@ public class RegistrationServiceImpl implements RegistrationService {
 		outlet.setRegNo1(trimToNull(settings.getRegNo1()));
 		outlet.setRegNo2(trimToNull(settings.getRegNo2()));
 		outlet.setLogoData(isBlank(settings.getLogoData()) ? null : settings.getLogoData());
+		if (settings.getInvoiceTemplateId() != null) {
+			outlet.setInvoiceTemplateId(settings.getInvoiceTemplateId() == 0 ? null
+					: invoiceTemplateService.findCompanyTemplate(settings.getInvoiceTemplateId()).getTemplateId());
+		}
 		outlet.setUpdatedBy(user.getUserName());
 		outlet.setUpdatedDate(new Date());
 		outletDetailsRepo.save(outlet);

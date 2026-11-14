@@ -57,10 +57,9 @@ public class TenantAdminController {
 		return ResponseEntity.ok(deleted);
 	}
 
-	@PostMapping("/outlets/invoiceTemplate")
-	public ResponseEntity<Object> applyInvoiceTemplate(@RequestParam("id") Integer id,
-			@RequestParam("templateId") Integer templateId) {
-		return ResponseEntity.ok(outletAdminService.applyInvoiceTemplate(id, templateId));
+	@GetMapping("/invoiceTemplates")
+	public ResponseEntity<Object> invoiceTemplates() {
+		return ResponseEntity.ok(outletAdminService.invoiceTemplates());
 	}
 
 	@PostMapping("/outlets/restore")

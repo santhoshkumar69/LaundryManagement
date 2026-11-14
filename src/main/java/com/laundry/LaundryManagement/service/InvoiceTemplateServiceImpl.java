@@ -16,12 +16,13 @@ import tools.jackson.databind.ObjectMapper;
 import com.laundry.LaundryManagement.dto.InvoiceTemplateSummary;
 import com.laundry.LaundryManagement.model.GlobalInfo;
 import com.laundry.LaundryManagement.model.InvoiceTemplate;
+import com.laundry.LaundryManagement.model.OutletDetails;
 import com.laundry.LaundryManagement.repository.InvoiceTemplateRepository;
+import com.laundry.LaundryManagement.repository.OutletDetailsRepo;
 
 @Service
 public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 
-	// Sessions carry no tenant yet; every existing row belongs to tenant 1.
 	private static final int PAPER_WIDTH_MM = 80;
 	private static final List<String> FONT_FAMILIES = Arrays.asList("Roboto", "CourierPrime", "PTSerif");
 	private static final double MIN_FONT_SIZE = 5;
@@ -31,12 +32,16 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 	@Autowired
 	private InvoiceTemplateRepository invoiceTemplateRepository;
 
+	@Autowired
+	private OutletDetailsRepo outletDetailsRepo;
+
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@Override
 	public List<InvoiceTemplateSummary> listTemplates() {
-		return invoiceTemplateRepository.findLive(RequestScope.requireTenantId()).stream().map(InvoiceTemplateSummary::of)
-				.collect(Collectors.toList());
+		Integer applied = currentOutlet().getInvoiceTemplateId();
+		return invoiceTemplateRepository.findLive(RequestScope.requireTenantId()).stream()
+				.map(t -> InvoiceTemplateSummary.of(t, t.getTemplateId().equals(applied))).collect(Collectors.toList());
 	}
 
 	@Override
@@ -46,8 +51,26 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 
 	@Override
 	public InvoiceTemplate getAppliedTemplate() {
-		List<InvoiceTemplate> applied = invoiceTemplateRepository.findApplied(RequestScope.requireTenantId());
-		return applied.isEmpty() ? null : applied.get(0);
+		Integer templateId = currentOutlet().getInvoiceTemplateId();
+		if (templateId == null) {
+			return null;
+		}
+		try {
+			return findCompanyTemplate(templateId);
+		} catch (IllegalArgumentException deleted) {
+			return null;
+		}
+	}
+
+	@Override
+	public InvoiceTemplate findCompanyTemplate(int templateId) {
+		int tenantId = RequestScope.requireTenantId();
+		InvoiceTemplate template = RequestScope.asSystem(() -> invoiceTemplateRepository.findById(templateId).orElse(null));
+		if (template == null || !Integer.valueOf(1).equals(template.getActiveStatus())
+				|| !Integer.valueOf(tenantId).equals(template.getTenantId())) {
+			throw new IllegalArgumentException("Invoice template not found");
+		}
+		return template;
 	}
 
 	@Override
@@ -113,15 +136,11 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 	@Transactional
 	public List<InvoiceTemplateSummary> applyTemplate(int templateId, GlobalInfo globalInfo) {
 		InvoiceTemplate target = templateId > 0 ? findLive(templateId) : null;
-		for (InvoiceTemplate template : invoiceTemplateRepository.findLive(RequestScope.requireTenantId())) {
-			int flag = target != null && template.getTemplateId().equals(target.getTemplateId()) ? 1 : 0;
-			if (!Integer.valueOf(flag).equals(template.getIsActive())) {
-				template.setIsActive(flag);
-				template.setUpdatedBy(userName(globalInfo));
-				template.setUpdatedDate(new Date());
-				invoiceTemplateRepository.save(template);
-			}
-		}
+		OutletDetails outlet = currentOutlet();
+		outlet.setInvoiceTemplateId(target == null ? null : target.getTemplateId());
+		outlet.setUpdatedBy(userName(globalInfo));
+		outlet.setUpdatedDate(new Date());
+		outletDetailsRepo.save(outlet);
 		return listTemplates();
 	}
 
@@ -129,12 +148,29 @@ public class InvoiceTemplateServiceImpl implements InvoiceTemplateService {
 	@Transactional
 	public List<InvoiceTemplateSummary> deleteTemplate(int templateId, GlobalInfo globalInfo) {
 		InvoiceTemplate template = findLive(templateId);
+		OutletDetails current = currentOutlet();
+		List<String> otherUsers = outletDetailsRepo.findByTenantIdOrderByIdAsc(RequestScope.requireTenantId()).stream()
+				.filter(o -> template.getTemplateId().equals(o.getInvoiceTemplateId()) && !o.getId().equals(current.getId()))
+				.map(OutletDetails::getOutletName).toList();
+		if (!otherUsers.isEmpty()) {
+			throw new IllegalArgumentException("\"" + template.getTemplateName() + "\" is used by " + String.join(", ", otherUsers)
+					+ ". Choose another template for them in Settings > Outlets first.");
+		}
+		if (template.getTemplateId().equals(current.getInvoiceTemplateId())) {
+			current.setInvoiceTemplateId(null);
+			outletDetailsRepo.save(current);
+		}
 		template.setActiveStatus(0);
 		template.setIsActive(0);
 		template.setUpdatedBy(userName(globalInfo));
 		template.setUpdatedDate(new Date());
 		invoiceTemplateRepository.save(template);
 		return listTemplates();
+	}
+
+	private OutletDetails currentOutlet() {
+		return outletDetailsRepo.findById(RequestScope.requireOutletId())
+				.orElseThrow(() -> new IllegalArgumentException("Choose an outlet first"));
 	}
 
 	private InvoiceTemplate findLive(int templateId) {

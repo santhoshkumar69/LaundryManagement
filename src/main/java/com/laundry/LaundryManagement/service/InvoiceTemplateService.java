@@ -19,4 +19,7 @@ public interface InvoiceTemplateService {
 	List<InvoiceTemplateSummary> applyTemplate(int templateId, GlobalInfo globalInfo);
 
 	List<InvoiceTemplateSummary> deleteTemplate(int templateId, GlobalInfo globalInfo);
+
+	/** A live template of the caller's company, whichever outlet owns it. */
+	InvoiceTemplate findCompanyTemplate(int templateId);
 }

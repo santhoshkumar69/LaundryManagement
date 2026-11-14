@@ -107,6 +107,10 @@ public class OutletDetails implements Serializable {
 	@Column(name = "ACTIVE_STATUS", nullable = false)
 	private Integer activeStatus = 1;
 
+	/** Invoice template bills print with; may belong to another outlet of the company. Null = built-in layout. */
+	@Column(name = "INVOICE_TEMPLATE_ID")
+	private Integer invoiceTemplateId;
+
 	public String getOutletName() {
 		return outletName;
 	}

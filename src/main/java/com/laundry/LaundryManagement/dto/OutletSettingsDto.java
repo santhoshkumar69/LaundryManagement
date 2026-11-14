@@ -10,6 +10,9 @@ public class OutletSettingsDto {
 	/** Outlet to show or save; the outlet chosen for the session when empty. */
 	private Integer outletId;
 
+	/** Invoice template the outlet prints with, from any outlet of the company; 0 = built-in layout. */
+	private Integer invoiceTemplateId;
+
 	private String outletCode;
 	private String outletName;
 

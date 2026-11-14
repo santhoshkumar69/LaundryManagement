@@ -14,13 +14,14 @@ public class InvoiceTemplateSummary {
 	private boolean hasLogo;
 	private Date updatedDate;
 
-	public static InvoiceTemplateSummary of(InvoiceTemplate template) {
+	/** applied: whether the current outlet prints bills with this template. */
+	public static InvoiceTemplateSummary of(InvoiceTemplate template, boolean applied) {
 		InvoiceTemplateSummary summary = new InvoiceTemplateSummary();
 		summary.templateId = template.getTemplateId();
 		summary.templateName = template.getTemplateName();
 		summary.fontFamily = template.getFontFamily();
 		summary.fontSize = template.getFontSize();
-		summary.applied = Integer.valueOf(1).equals(template.getIsActive());
+		summary.applied = applied;
 		summary.hasLogo = template.getLogoData() != null && !template.getLogoData().isEmpty();
 		summary.updatedDate = template.getUpdatedDate() != null ? template.getUpdatedDate()
 				: template.getCreatedDate();
