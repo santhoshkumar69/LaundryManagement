@@ -10,7 +10,7 @@ import com.laundry.LaundryManagement.model.PaymentMode;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 
-/** Gives a new outlet the standard Cash and Card payment modes. */
+/** Gives a new outlet the standard Cash (default) and Card payment modes. */
 @Component
 public class PaymentModeDefaults {
 
@@ -31,7 +31,9 @@ public class PaymentModeDefaults {
 	}
 
 	private void persistDefaults(int tenantId, int outletId, String createdBy) {
-		em.persist(mode("Cash", false, tenantId, outletId, createdBy));
+		PaymentMode cash = mode("Cash", false, tenantId, outletId, createdBy);
+		cash.setDefaultMode(true);
+		em.persist(cash);
 		em.persist(mode("Card", true, tenantId, outletId, createdBy));
 		em.flush();
 	}

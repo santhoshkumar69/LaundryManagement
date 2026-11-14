@@ -37,7 +37,11 @@ public class PaymentModeServiceImpl implements PaymentModeService {
 			}
 			target.setPaymentMode(paymentMode.getPaymentMode().trim());
 			target.setNeedsCardType(paymentMode.isNeedsCardType());
-			paymentModeRepo.save(target);
+			target.setDefaultMode(paymentMode.isDefaultMode() && target.getActiveStatus() == 1);
+			target = paymentModeRepo.saveAndFlush(target);
+			if (target.isDefaultMode()) {
+				paymentModeRepo.clearOtherDefaults(target.getId());
+			}
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -73,6 +77,7 @@ public class PaymentModeServiceImpl implements PaymentModeService {
 			PaymentMode paymentMode = paymentModeRepo.findById(id).orElse(null);
 			if(paymentMode != null) {
 				paymentMode.setActiveStatus(0);
+				paymentMode.setDefaultMode(false);
 				paymentModeRepo.save(paymentMode);
 				thePaymentMode.add(paymentMode);
 			}

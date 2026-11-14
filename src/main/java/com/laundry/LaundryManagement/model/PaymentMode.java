@@ -60,6 +60,10 @@ public class PaymentMode implements Serializable {
 	@Column(name = "NEEDS_CARD_TYPE", nullable = false)
 	private boolean needsCardType;
 
+	/** Pre-selected on new bills; at most one active mode per outlet. */
+	@Column(name = "IS_DEFAULT", nullable = false)
+	private boolean defaultMode;
+
 	/**
 	 * @return the id
 	 */
