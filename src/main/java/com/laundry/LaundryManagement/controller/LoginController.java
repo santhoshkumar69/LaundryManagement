@@ -2,7 +2,6 @@ package com.laundry.LaundryManagement.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,7 +15,6 @@ import com.laundry.LaundryManagement.dto.ReturnResponse;
 import com.laundry.LaundryManagement.service.LoginService;
 
 /** Signing in now happens at /auth/login (with tenant ID); this controller keeps password changes. */
-@CrossOrigin(origins = "http://localhost:4200", maxAge = 3600)
 @RestController
 @RequestMapping("login")
 public class LoginController {

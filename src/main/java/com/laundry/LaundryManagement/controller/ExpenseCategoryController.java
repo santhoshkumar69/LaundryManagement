@@ -2,7 +2,6 @@ package com.laundry.LaundryManagement.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,7 +16,6 @@ import com.laundry.LaundryManagement.dto.ReturnResponse;
 import com.laundry.LaundryManagement.service.ExpenseCategoryService;
 
 /** Accounts & Reports > Expense Categories for the current outlet. */
-@CrossOrigin(origins = "http://localhost:4200", maxAge = 3600)
 @RestController
 @RequestMapping("expenseCategories")
 public class ExpenseCategoryController {

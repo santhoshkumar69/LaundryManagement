@@ -1,0 +1,5 @@
+deploy/.do_token
+deploy/laundry.env
+deploy/*.sql.gz
+uploads/
+target/

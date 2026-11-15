@@ -26,16 +26,18 @@ public class AuthFilter extends OncePerRequestFilter {
 	private static final List<String> NO_OUTLET_PATHS = List.of("/auth/outlets", "/auth/selectOutlet", "/auth/me");
 	private static final List<String> ADMIN_PATHS = List.of("/admin/", "/userInfo/", "/userRole/",
 			"/companyProfile/update", "/outletSettings/update");
-	private static final List<String> ALLOWED_ORIGINS = List.of("http://localhost:4200");
 
 	private final AuthTokenService tokens;
 	private final DeletedOutlets deletedOutlets;
 	private final RolePermissions rolePermissions;
+	private final CorsOrigins corsOrigins;
 
-	public AuthFilter(AuthTokenService tokens, DeletedOutlets deletedOutlets, RolePermissions rolePermissions) {
+	public AuthFilter(AuthTokenService tokens, DeletedOutlets deletedOutlets, RolePermissions rolePermissions,
+			CorsOrigins corsOrigins) {
 		this.tokens = tokens;
 		this.deletedOutlets = deletedOutlets;
 		this.rolePermissions = rolePermissions;
+		this.corsOrigins = corsOrigins;
 	}
 
 	@Override
@@ -86,10 +88,10 @@ public class AuthFilter extends OncePerRequestFilter {
 	}
 
 	/** Error with CORS headers, so the browser lets the app see the status (401 sends the user to login). */
-	private static void reject(HttpServletRequest request, HttpServletResponse response, int status, String message)
+	private void reject(HttpServletRequest request, HttpServletResponse response, int status, String message)
 			throws IOException {
 		String origin = request.getHeader("Origin");
-		if (origin != null && ALLOWED_ORIGINS.contains(origin)) {
+		if (corsOrigins.allows(origin)) {
 			response.setHeader("Access-Control-Allow-Origin", origin);
 			response.setHeader("Vary", "Origin");
 		}

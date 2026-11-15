@@ -2,7 +2,6 @@ package com.laundry.LaundryManagement.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,7 +18,6 @@ import com.laundry.LaundryManagement.service.RoleAdminService;
 import com.laundry.LaundryManagement.service.UserAdminService;
 
 /** Outlets and users of the signed-in admin's tenant. */
-@CrossOrigin(origins = "http://localhost:4200", maxAge = 3600)
 @RestController
 @RequestMapping("admin")
 public class TenantAdminController {

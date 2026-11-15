@@ -1,0 +1,17 @@
+{
+	email {$LAUNDRY_ACME_EMAIL:admin@example.com}
+}
+
+{$LAUNDRY_HOST} {
+	encode gzip
+
+	handle_path /api/* {
+		reverse_proxy 127.0.0.1:9090
+	}
+
+	handle {
+		root * /var/www/laundryui
+		try_files {path} /index.html
+		file_server
+	}
+}

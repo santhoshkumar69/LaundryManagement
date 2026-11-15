@@ -10,7 +10,6 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,7 +22,6 @@ import com.laundry.LaundryManagement.repository.OutletDetailsRepo;
 import com.laundry.LaundryManagement.service.ReportsService;
 
 /** Accounts &amp; Reports: daily sales, general, credit and void/recall reports. */
-@CrossOrigin(origins = "http://localhost:4200", maxAge = 3600)
 @RestController
 @RequestMapping("reports")
 public class ReportsController {
